@@ -74,6 +74,8 @@ model Player {
   currentStreak  Int       @default(0)
   longestStreak  Int       @default(0)
   lastActiveDate DateTime? @db.Date
+  lastLoginBonusAt DateTime? @db.Date
+  loginBonusStreak Int       @default(0)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
