@@ -33,21 +33,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, user }) {
       if (session.user) {
         session.user.id = user.id;
+        // Player作成イベントが何らかの理由で未実行/失敗のまま
+        // Userだけ存在すると、各画面のPlayer必須チェックとログイン画面の
+        // リダイレクトが噛み合って無限ループになるため、ここで都度保証する。
+        await prisma.player.upsert({
+          where: { userId: user.id },
+          update: {},
+          create: {
+            userId: user.id,
+            name: user.name ?? "Player",
+            village: { create: {} },
+          },
+        });
       }
       return session;
-    },
-  },
-  events: {
-    // 初回ログイン時にPlayerとVillageを自動作成する(19_Phase4 M1)
-    async createUser({ user }) {
-      if (!user.id) return;
-      await prisma.player.create({
-        data: {
-          user: { connect: { id: user.id } },
-          name: user.name ?? "Player",
-          village: { create: {} },
-        },
-      });
     },
   },
 });
