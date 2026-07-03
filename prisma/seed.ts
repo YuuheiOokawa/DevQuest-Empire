@@ -96,6 +96,39 @@ const achievementMasters = [
   },
 ];
 
+const titleMasters = [
+  {
+    type: "novice",
+    name: "駆け出し冒険者",
+    condition: "はじめから装着できる称号",
+    unlockCondition: { metric: "level", operator: ">=", value: 1 },
+  },
+  {
+    type: "apprentice",
+    name: "見習い開発者",
+    condition: "プレイヤーレベル5に到達する",
+    unlockCondition: { metric: "level", operator: ">=", value: 5 },
+  },
+  {
+    type: "journeyman",
+    name: "一人前の開発者",
+    condition: "プレイヤーレベル10に到達する",
+    unlockCondition: { metric: "level", operator: ">=", value: 10 },
+  },
+  {
+    type: "veteran",
+    name: "熟練エンジニア",
+    condition: "プレイヤーレベル20に到達する",
+    unlockCondition: { metric: "level", operator: ">=", value: 20 },
+  },
+  {
+    type: "legend",
+    name: "伝説の開発者",
+    condition: "プレイヤーレベル30に到達する",
+    unlockCondition: { metric: "level", operator: ">=", value: 30 },
+  },
+];
+
 async function main() {
   for (const b of buildingMasters) {
     await prisma.buildingMaster.upsert({
@@ -113,12 +146,20 @@ async function main() {
     });
   }
 
+  for (const t of titleMasters) {
+    await prisma.titleMaster.upsert({
+      where: { type: t.type },
+      update: t,
+      create: t,
+    });
+  }
+
   // FallbackQuestはユニークキーを持たないため、毎回全消し→再投入する
   await prisma.fallbackQuest.deleteMany();
   await prisma.fallbackQuest.createMany({ data: fallbackQuests });
 
   console.log(
-    `Seed完了: BuildingMaster ${buildingMasters.length}件 / AchievementMaster ${achievementMasters.length}件 / FallbackQuest ${fallbackQuests.length}件`
+    `Seed完了: BuildingMaster ${buildingMasters.length}件 / AchievementMaster ${achievementMasters.length}件 / TitleMaster ${titleMasters.length}件 / FallbackQuest ${fallbackQuests.length}件`
   );
 }
 

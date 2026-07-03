@@ -76,6 +76,8 @@ model Player {
   lastActiveDate DateTime? @db.Date
   lastLoginBonusAt DateTime? @db.Date
   loginBonusStreak Int       @default(0)
+  equippedTitleId  String?
+  equippedTitle    TitleMaster? @relation("EquippedTitle", fields: [equippedTitleId], references: [id])
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -83,6 +85,29 @@ model Player {
   quests           Quest[]
   achievements     PlayerAchievement[]
   activityComments GithubActivityComment[]
+  titles           PlayerTitle[]
+}
+
+model TitleMaster {
+  id              String @id @default(cuid())
+  type            String @unique
+  name            String
+  condition       String
+  unlockCondition Json
+
+  playerTitles PlayerTitle[]
+  equippedBy   Player[] @relation("EquippedTitle")
+}
+
+model PlayerTitle {
+  id            String      @id @default(cuid())
+  playerId      String
+  player        Player      @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  titleMasterId String
+  titleMaster   TitleMaster @relation(fields: [titleMasterId], references: [id])
+  unlockedAt    DateTime    @default(now())
+
+  @@unique([playerId, titleMasterId])
 }
 
 model GithubRepository {

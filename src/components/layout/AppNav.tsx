@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { href: "/village", label: "村" },
   { href: "/quest", label: "クエスト" },
   { href: "/achievements", label: "実績" },
+  { href: "/titles", label: "称号" },
   { href: "/settings/github", label: "GitHub連携" },
 ];
 
