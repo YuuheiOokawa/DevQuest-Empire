@@ -8,7 +8,7 @@ import {
 } from "@/lib/game/buildings";
 import { AppNav } from "@/components/layout/AppNav";
 import { BuildingIcon } from "@/components/village/BuildingIcon";
-import { TownScene } from "@/components/village/TownScene";
+import { TownScene3D } from "@/components/village/TownScene3D";
 import {
   SettlementBadge,
   TIER_PAGE_BACKGROUND,
@@ -75,7 +75,7 @@ export default async function VillagePage() {
             </p>
           ) : (
             <>
-              <TownScene tier={settlement.tier} buildings={buildings} />
+              <TownScene3D tier={settlement.tier} buildings={buildings} />
 
               <Card>
                 <CardContent className="flex items-center gap-4 py-4">
