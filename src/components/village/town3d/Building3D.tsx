@@ -57,6 +57,11 @@ export const BUILDING_CONFIG_3D: Record<string, BuildingConfig> = {
   world_tree: { archetype: "tree", scale: 1.3 },
   grand_colosseum: { archetype: "grandHall", scale: 1.4, arches: true },
   throne_room: { archetype: "castle", scale: 1.3, crown: true },
+  bank: { archetype: "grandHall", scale: 1.1 },
+  barracks: { archetype: "tower", scale: 1.05, flag: true },
+  temple: { archetype: "church", scale: 1.15, dome: true },
+  palace: { archetype: "castle", scale: 1.25, dome: true, flag: true },
+  farm: { archetype: "house", scale: 0.78, wide: true, chimney: true },
 };
 
 // 旗竿の先端に取り付ける、風にはためくアニメーション付きの小さな旗。
@@ -464,21 +469,58 @@ function Archetype({
   }
 }
 
-function ConstructionLot() {
+function ConstructionLot({ tier = 1 }: { tier?: number }) {
+  const world = getTierWorldConfig(tier);
   return (
     <group>
-      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[1.1, 1.1]} />
-        <meshStandardMaterial color="#8a6d4a" transparent opacity={0.4} />
+      <mesh position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.48, 0.62, 6]} />
+        <meshStandardMaterial color={world.palette.accent} transparent opacity={0.42} />
       </mesh>
-      <mesh position={[-0.3, 0.15, -0.3]}>
-        <boxGeometry args={[0.08, 0.3, 0.08]} />
-        <meshStandardMaterial color="#8a6d4a" transparent opacity={0.6} />
+      <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[1.05, 1.05]} />
+        <meshStandardMaterial color="#4b5563" transparent opacity={0.18} wireframe />
       </mesh>
-      <mesh position={[0.3, 0.15, 0.3]}>
-        <boxGeometry args={[0.08, 0.3, 0.08]} />
-        <meshStandardMaterial color="#8a6d4a" transparent opacity={0.6} />
+      {[-0.38, 0.38].map((x) => (
+        <mesh key={x} position={[x, 0.18, -0.38]}>
+          <boxGeometry args={[0.06, 0.36, 0.06]} />
+          <meshStandardMaterial color="#6b7280" transparent opacity={0.55} />
+        </mesh>
+      ))}
+      <group position={[0, 0.55, 0]}>
+        <mesh position={[0, -0.08, 0]}>
+          <boxGeometry args={[0.34, 0.26, 0.08]} />
+          <meshStandardMaterial color="#111827" transparent opacity={0.62} />
+        </mesh>
+        <mesh position={[0, 0.08, 0]}>
+          <torusGeometry args={[0.14, 0.035, 6, 16, Math.PI]} />
+          <meshStandardMaterial color="#111827" transparent opacity={0.62} />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+function LevelPedestal({ level, maxLevel, unlocked, tier }: { level: number; maxLevel?: number; unlocked: boolean; tier: number }) {
+  const world = getTierWorldConfig(tier);
+  const isMaxed = unlocked && maxLevel && maxLevel > 0 && level >= maxLevel;
+  return (
+    <group>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.006, 0]} receiveShadow>
+        <circleGeometry args={[0.72, 32]} />
+        <meshStandardMaterial
+          color={isMaxed ? "#facc15" : unlocked ? world.roadColor : "#6b7280"}
+          transparent
+          opacity={isMaxed ? 0.78 : 0.42}
+          roughness={0.8}
+        />
       </mesh>
+      {isMaxed && (
+        <mesh position={[0, 0.08, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.78, 0.9, 48]} />
+          <meshStandardMaterial color="#fde68a" emissive="#facc15" emissiveIntensity={0.45} transparent opacity={0.85} />
+        </mesh>
+      )}
     </group>
   );
 }
@@ -487,6 +529,7 @@ export function Building3D({
   type,
   requiredTier,
   level,
+  maxLevel,
   unlocked,
   position,
   rotationY,
@@ -495,6 +538,7 @@ export function Building3D({
   type: string;
   requiredTier: number;
   level: number;
+  maxLevel?: number;
   unlocked: boolean;
   position: [number, number];
   rotationY: number;
@@ -528,11 +572,12 @@ export function Building3D({
       onPointerOver={handlePointerOver}
       onPointerOut={handlePointerOut}
     >
+      <LevelPedestal level={level} maxLevel={maxLevel} unlocked={unlocked} tier={requiredTier} />
       <PopIn>
         {unlocked ? (
           <Archetype archetype={config.archetype} p={world.palette} opts={config} effects={world.effects} />
         ) : (
-          <ConstructionLot />
+          <ConstructionLot tier={requiredTier} />
         )}
       </PopIn>
     </group>

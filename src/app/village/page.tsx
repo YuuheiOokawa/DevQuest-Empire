@@ -17,7 +17,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 
-const TIER_NAMES = ["村", "町", "大きな町", "帝国", "王国", "国"];
+const TIER_NAMES = ["村", "小さな町", "大きな町", "都市", "大都市", "国"];
 
 // カードの左端の色をティアごとに変え、施設が発展するほど豪華な色味になるようにする。
 const TIER_ACCENT_BORDER: Record<number, string> = {
@@ -58,7 +58,7 @@ export default async function VillagePage() {
     <>
       <AppNav />
       <div className={backgroundClass}>
-        <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-10">
+        <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-10">
           <div className="space-y-1">
             <h1 className="flex items-center gap-2 text-2xl font-bold">
               <Sparkles className="text-primary size-6" />
@@ -76,6 +76,12 @@ export default async function VillagePage() {
           ) : (
             <>
               <TownScene3D tier={settlement.tier} buildings={buildings} />
+
+              <div className="grid grid-cols-3 gap-2 text-center text-xs sm:text-sm">
+                <Card><CardContent className="py-3"><div className="font-semibold">Tier {settlement.tier}</div><div className="text-muted-foreground">{settlement.tierName}</div></CardContent></Card>
+                <Card><CardContent className="py-3"><div className="font-semibold">{buildings.filter((b) => b.unlocked).length}/{buildings.length}</div><div className="text-muted-foreground">建設済み</div></CardContent></Card>
+                <Card><CardContent className="py-3"><div className="font-semibold">{buildings.filter((b) => b.maxLevel > 0 && b.level >= b.maxLevel).length}</div><div className="text-muted-foreground">MAX施設</div></CardContent></Card>
+              </div>
 
               <Card>
                 <CardContent className="flex items-center gap-4 py-4">
