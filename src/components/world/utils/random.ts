@@ -10,11 +10,3 @@ export function seededRandom(seed: number): number {
   const x = Math.sin(seed) * 10000;
   return x - Math.floor(x);
 }
-
-export function seededRange(seed: number, min: number, max: number): number {
-  return min + seededRandom(seed) * (max - min);
-}
-
-export function clamp(n: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, n));
-}

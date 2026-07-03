@@ -8,7 +8,8 @@ import {
 } from "@/lib/game/buildings";
 import { AppNav } from "@/components/layout/AppNav";
 import { BuildingIcon } from "@/components/village/BuildingIcon";
-import { TownScene3D } from "@/components/village/TownScene3D";
+import { WorldScene } from "@/components/world/WorldScene";
+import { getSeasonalDefaults } from "@/lib/game/season";
 import {
   SettlementBadge,
   TIER_PAGE_BACKGROUND,
@@ -39,6 +40,7 @@ export default async function VillagePage() {
     getVillageBuildingsView(session.user.id),
     getSettlementInfo(session.user.id),
   ]);
+  const { season, eventTheme } = getSeasonalDefaults(new Date());
   const score = buildings ? getVillageScore(buildings) : null;
   const tierProgressRate =
     settlement && settlement.requiredScoreForNextTier
@@ -75,7 +77,13 @@ export default async function VillagePage() {
             </p>
           ) : (
             <>
-              <TownScene3D tier={settlement.tier} buildings={buildings} />
+              <WorldScene
+                tier={settlement.tier as 1 | 2 | 3 | 4 | 5 | 6}
+                buildings={buildings}
+                season={season}
+                weather="clear"
+                eventTheme={eventTheme}
+              />
 
               <div className="grid grid-cols-3 gap-2 text-center text-xs sm:text-sm">
                 <Card><CardContent className="py-3"><div className="font-semibold">Tier {settlement.tier}</div><div className="text-muted-foreground">{settlement.tierName}</div></CardContent></Card>

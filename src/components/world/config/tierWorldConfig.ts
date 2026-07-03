@@ -1,3 +1,5 @@
+import type { Tier } from "../types/worldTypes";
+
 export type Palette3D = {
   wall: string;
   roof: string;
@@ -5,8 +7,6 @@ export type Palette3D = {
   window: string;
   accent: string;
 };
-
-export type Tier = 1 | 2 | 3 | 4 | 5 | 6;
 
 export type TierWorldConfig = {
   name: string;
@@ -20,6 +20,7 @@ export type TierWorldConfig = {
   wallColor?: string;
   treeColor: string;
   treeCount: number;
+  npcCount: number;
   sky: {
     css: string;
     horizon: string;
@@ -60,6 +61,9 @@ export type TierWorldConfig = {
   };
 };
 
+// ティアごとの世界観設定を1箇所に集約する。空・地形・水・道路・城壁・装飾・NPC数・
+// 演出フラグをすべてここで管理し、新しいティアや演出を追加する際もこの
+// オブジェクトの追記だけで済むようにする。
 export const TIER_WORLD_CONFIG: Record<Tier, TierWorldConfig> = {
   1: {
     name: "村",
@@ -72,6 +76,7 @@ export const TIER_WORLD_CONFIG: Record<Tier, TierWorldConfig> = {
     waterColor: "#4a90c2",
     treeColor: "#2f7d45",
     treeCount: 14,
+    npcCount: 3,
     sky: { css: "bg-gradient-to-b from-sky-300 via-sky-100 to-sky-50", horizon: "#d9f4ff", starCount: 0, cloudCount: 5, godRayCount: 0 },
     layout: { density: 0.72, roadRings: 0, plazaRadius: 0.72, hasBridge: true, hasMoat: false, hasHarbor: false, hasMountains: true },
     lighting: { ambient: "#ffffff", ambientIntensity: 0.76, sun: "#fff6e0", sunIntensity: 1.15, sunPosition: [6, 10, 4], fog: "#e6fff0" },
@@ -89,6 +94,7 @@ export const TIER_WORLD_CONFIG: Record<Tier, TierWorldConfig> = {
     waterColor: "#4a90c2",
     treeColor: "#347a3d",
     treeCount: 15,
+    npcCount: 5,
     sky: { css: "bg-gradient-to-b from-sky-400 via-sky-200 to-blue-50", horizon: "#caedff", starCount: 0, cloudCount: 6, godRayCount: 0 },
     layout: { density: 0.84, roadRings: 1, plazaRadius: 0.85, hasBridge: true, hasMoat: false, hasHarbor: false, hasMountains: true },
     lighting: { ambient: "#ffffff", ambientIntensity: 0.7, sun: "#fff2d8", sunIntensity: 1.05, sunPosition: [6, 10, 4], fog: "#edf8ff" },
@@ -106,6 +112,7 @@ export const TIER_WORLD_CONFIG: Record<Tier, TierWorldConfig> = {
     waterColor: "#3d6d9c",
     treeColor: "#315c40",
     treeCount: 16,
+    npcCount: 8,
     sky: { css: "bg-gradient-to-b from-indigo-700 via-violet-400 to-orange-200", horizon: "#ffb36b", starCount: 18, cloudCount: 4, godRayCount: 0 },
     layout: { density: 0.96, roadRings: 1, plazaRadius: 0.96, hasBridge: true, hasMoat: false, hasHarbor: false, hasMountains: true },
     lighting: { ambient: "#c7c2ff", ambientIntensity: 0.56, sun: "#ffb27a", sunIntensity: 0.9, sunPosition: [-6, 6, 4], fog: "#f5b47b" },
@@ -124,6 +131,7 @@ export const TIER_WORLD_CONFIG: Record<Tier, TierWorldConfig> = {
     wallColor: "#c9b8a8",
     treeColor: "#233b35",
     treeCount: 17,
+    npcCount: 12,
     sky: { css: "bg-gradient-to-b from-slate-950 via-indigo-900 to-rose-300", horizon: "#fb7185", starCount: 36, cloudCount: 2, godRayCount: 0 },
     layout: { density: 1.08, roadRings: 2, plazaRadius: 1.05, hasBridge: true, hasMoat: true, hasHarbor: false, hasMountains: false },
     lighting: { ambient: "#b9c2ff", ambientIntensity: 0.5, sun: "#ff9ecf", sunIntensity: 0.72, sunPosition: [-6, 5, 4], fog: "#322859" },
@@ -142,6 +150,7 @@ export const TIER_WORLD_CONFIG: Record<Tier, TierWorldConfig> = {
     wallColor: "#d9c48a",
     treeColor: "#365942",
     treeCount: 18,
+    npcCount: 18,
     sky: { css: "bg-gradient-to-b from-slate-950 via-blue-950 to-amber-300", horizon: "#facc15", starCount: 52, cloudCount: 1, godRayCount: 2 },
     layout: { density: 1.18, roadRings: 2, plazaRadius: 1.15, hasBridge: true, hasMoat: true, hasHarbor: true, hasMountains: false },
     lighting: { ambient: "#fff0c2", ambientIntensity: 0.62, sun: "#ffe08a", sunIntensity: 0.92, sunPosition: [6, 9, 4], fog: "#382f1b" },
@@ -160,6 +169,7 @@ export const TIER_WORLD_CONFIG: Record<Tier, TierWorldConfig> = {
     wallColor: "#f0dfa0",
     treeColor: "#4f6f45",
     treeCount: 20,
+    npcCount: 24,
     sky: { css: "bg-gradient-to-b from-yellow-300 via-amber-100 to-orange-50", horizon: "#fff7ad", starCount: 68, cloudCount: 0, godRayCount: 9 },
     layout: { density: 1.28, roadRings: 3, plazaRadius: 1.24, hasBridge: true, hasMoat: true, hasHarbor: true, hasMountains: false },
     lighting: { ambient: "#fff6d0", ambientIntensity: 0.78, sun: "#ffe066", sunIntensity: 1.12, sunPosition: [6, 9, 4], fog: "#fff1a8" },

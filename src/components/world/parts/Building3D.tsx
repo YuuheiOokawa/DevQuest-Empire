@@ -1,68 +1,10 @@
 import { useRef, useState } from "react";
 import { useFrame, type ThreeEvent } from "@react-three/fiber";
 import type { Group, Mesh, MeshStandardMaterial } from "three";
-import { getTierWorldConfig, type Palette3D } from "./tierWorldConfig";
-
-type Archetype =
-  | "house"
-  | "houseGrand"
-  | "tower"
-  | "church"
-  | "castle"
-  | "grandHall"
-  | "marketStall"
-  | "monument"
-  | "tree"
-  | "harbor";
-
-type BuildingConfig = {
-  archetype: Archetype;
-  scale?: number;
-  wide?: boolean;
-  chimney?: boolean;
-  dome?: boolean;
-  crown?: boolean;
-  flag?: boolean;
-  arches?: boolean;
-};
-
-export const BUILDING_CONFIG_3D: Record<string, BuildingConfig> = {
-  house_small: { archetype: "house", scale: 0.85 },
-  house_large: { archetype: "house", scale: 1, wide: true },
-  blacksmith: { archetype: "house", scale: 0.9, chimney: true },
-  guild: { archetype: "houseGrand", scale: 1.05 },
-  tavern: { archetype: "marketStall", scale: 0.9 },
-  dev_base: { archetype: "tower", scale: 0.85, flag: true },
-  castle: { archetype: "castle", scale: 1.2, flag: true },
-  library: { archetype: "houseGrand", scale: 1 },
-  academy: { archetype: "grandHall", scale: 0.95 },
-  monument: { archetype: "monument", scale: 0.9 },
-  market: { archetype: "marketStall", scale: 1 },
-  school: { archetype: "houseGrand", scale: 0.95 },
-  workshop: { archetype: "house", scale: 0.9, chimney: true },
-  watchtower: { archetype: "tower", scale: 1.1, flag: true },
-  cathedral: { archetype: "church", scale: 1.25 },
-  arena: { archetype: "grandHall", scale: 1.1, arches: true },
-  harbor: { archetype: "harbor", scale: 1 },
-  observatory: { archetype: "tower", scale: 1.05, dome: true },
-  grand_library: { archetype: "grandHall", scale: 1.1 },
-  colosseum: { archetype: "grandHall", scale: 1.25, arches: true },
-  senate: { archetype: "grandHall", scale: 1.15 },
-  shipyard: { archetype: "harbor", scale: 1.15 },
-  royal_palace: { archetype: "castle", scale: 1.3, dome: true, flag: true },
-  great_academy: { archetype: "grandHall", scale: 1.2 },
-  trade_hub: { archetype: "marketStall", scale: 1.2, wide: true },
-  monastery: { archetype: "church", scale: 1 },
-  imperial_capital: { archetype: "castle", scale: 1.4, dome: true, flag: true },
-  world_tree: { archetype: "tree", scale: 1.3 },
-  grand_colosseum: { archetype: "grandHall", scale: 1.4, arches: true },
-  throne_room: { archetype: "castle", scale: 1.3, crown: true },
-  bank: { archetype: "grandHall", scale: 1.1 },
-  barracks: { archetype: "tower", scale: 1.05, flag: true },
-  temple: { archetype: "church", scale: 1.15, dome: true },
-  palace: { archetype: "castle", scale: 1.25, dome: true, flag: true },
-  farm: { archetype: "house", scale: 0.78, wide: true, chimney: true },
-};
+import { getTierWorldConfig, type Palette3D } from "../config/tierWorldConfig";
+import { BUILDING_CONFIG_3D, type Archetype, type BuildingConfig } from "../config/buildingConfig";
+import { Tree3D } from "./Tree3D";
+import { LockedBuildingSlot } from "./LockedBuildingSlot";
 
 // 旗竿の先端に取り付ける、風にはためくアニメーション付きの小さな旗。
 function Flag({ color, position }: { color: string; position: [number, number, number] }) {
@@ -122,6 +64,17 @@ function PopIn({ children }: { children: React.ReactNode }) {
       const t = Math.min(1, (clock.elapsedTime - born.current) / 0.4);
       const eased = 1 - Math.pow(1 - t, 3);
       ref.current.scale.setScalar(Math.max(0.001, eased));
+    }
+  });
+  return <group ref={ref}>{children}</group>;
+}
+
+// 選択中の建物だけ、ゆっくり上下に浮くアニメーション。
+function SelectionBob({ active, children }: { active: boolean; children: React.ReactNode }) {
+  const ref = useRef<Group>(null);
+  useFrame(({ clock }) => {
+    if (ref.current) {
+      ref.current.position.y = active ? Math.sin(clock.elapsedTime * 2.4) * 0.03 + 0.06 : 0;
     }
   });
   return <group ref={ref}>{children}</group>;
@@ -379,34 +332,6 @@ function Monument({ p }: { p: Palette3D }) {
   );
 }
 
-export function Tree({ p, opts }: { p: Palette3D; opts: BuildingConfig }) {
-  const glow = opts.dome;
-  const green = glow ? "#d4af37" : "#4a8f3c";
-  return (
-    <group>
-      <mesh position={[0, 0.4, 0]} castShadow>
-        <cylinderGeometry args={[0.08, 0.11, 0.8, 6]} />
-        <meshStandardMaterial color="#7a5230" />
-      </mesh>
-      <mesh position={[0, 1.05, 0]} castShadow>
-        <sphereGeometry args={[0.55, 8, 6]} />
-        <meshStandardMaterial color={green} emissive={glow ? green : "#000000"} emissiveIntensity={glow ? 0.3 : 0} />
-      </mesh>
-      <mesh position={[-0.35, 0.85, 0.2]} castShadow>
-        <sphereGeometry args={[0.35, 8, 6]} />
-        <meshStandardMaterial color={green} />
-      </mesh>
-      <mesh position={[0.4, 0.85, -0.15]} castShadow>
-        <sphereGeometry args={[0.38, 8, 6]} />
-        <meshStandardMaterial color={green} />
-      </mesh>
-      <mesh position={[0, 0.85, 0]}>
-        <pointLight color={p.accent} intensity={glow ? 0.8 : 0} distance={2} />
-      </mesh>
-    </group>
-  );
-}
-
 function Harbor({ p }: { p: Palette3D }) {
   return (
     <group>
@@ -434,7 +359,7 @@ function Harbor({ p }: { p: Palette3D }) {
   );
 }
 
-function Archetype({
+function ArchetypeShape({
   archetype,
   p,
   opts,
@@ -463,47 +388,27 @@ function Archetype({
     case "monument":
       return <Monument p={p} />;
     case "tree":
-      return <Tree p={p} opts={opts} />;
+      return <Tree3D p={p} opts={opts} />;
     case "harbor":
       return <Harbor p={p} />;
   }
 }
 
-function ConstructionLot({ tier = 1 }: { tier?: number }) {
+// MAX建物は台座が金色に光る。選択中の建物は台座が浮かず常時表示なので、
+// EffectSystem側の選択リング(浮遊/発光)と役割が分かれている。
+function LevelPedestal({
+  level,
+  maxLevel,
+  unlocked,
+  tier,
+}: {
+  level: number;
+  maxLevel?: number;
+  unlocked: boolean;
+  tier: number;
+}) {
   const world = getTierWorldConfig(tier);
-  return (
-    <group>
-      <mesh position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.48, 0.62, 6]} />
-        <meshStandardMaterial color={world.palette.accent} transparent opacity={0.42} />
-      </mesh>
-      <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[1.05, 1.05]} />
-        <meshStandardMaterial color="#4b5563" transparent opacity={0.18} wireframe />
-      </mesh>
-      {[-0.38, 0.38].map((x) => (
-        <mesh key={x} position={[x, 0.18, -0.38]}>
-          <boxGeometry args={[0.06, 0.36, 0.06]} />
-          <meshStandardMaterial color="#6b7280" transparent opacity={0.55} />
-        </mesh>
-      ))}
-      <group position={[0, 0.55, 0]}>
-        <mesh position={[0, -0.08, 0]}>
-          <boxGeometry args={[0.34, 0.26, 0.08]} />
-          <meshStandardMaterial color="#111827" transparent opacity={0.62} />
-        </mesh>
-        <mesh position={[0, 0.08, 0]}>
-          <torusGeometry args={[0.14, 0.035, 6, 16, Math.PI]} />
-          <meshStandardMaterial color="#111827" transparent opacity={0.62} />
-        </mesh>
-      </group>
-    </group>
-  );
-}
-
-function LevelPedestal({ level, maxLevel, unlocked, tier }: { level: number; maxLevel?: number; unlocked: boolean; tier: number }) {
-  const world = getTierWorldConfig(tier);
-  const isMaxed = unlocked && maxLevel && maxLevel > 0 && level >= maxLevel;
+  const isMaxed = unlocked && !!maxLevel && maxLevel > 0 && level >= maxLevel;
   return (
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.006, 0]} receiveShadow>
@@ -533,6 +438,7 @@ export function Building3D({
   unlocked,
   position,
   rotationY,
+  selected,
   onSelect,
 }: {
   type: string;
@@ -542,6 +448,7 @@ export function Building3D({
   unlocked: boolean;
   position: [number, number];
   rotationY: number;
+  selected?: boolean;
   onSelect?: (type: string) => void;
 }) {
   const config = BUILDING_CONFIG_3D[type] ?? { archetype: "house" };
@@ -573,13 +480,21 @@ export function Building3D({
       onPointerOut={handlePointerOut}
     >
       <LevelPedestal level={level} maxLevel={maxLevel} unlocked={unlocked} tier={requiredTier} />
-      <PopIn>
-        {unlocked ? (
-          <Archetype archetype={config.archetype} p={world.palette} opts={config} effects={world.effects} />
-        ) : (
-          <ConstructionLot tier={requiredTier} />
-        )}
-      </PopIn>
+      {selected && (
+        <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.74, 0.82, 40]} />
+          <meshStandardMaterial color={world.palette.accent} emissive={world.palette.accent} emissiveIntensity={0.6} transparent opacity={0.9} />
+        </mesh>
+      )}
+      <SelectionBob active={!!selected}>
+        <PopIn>
+          {unlocked ? (
+            <ArchetypeShape archetype={config.archetype} p={world.palette} opts={config} effects={world.effects} />
+          ) : (
+            <LockedBuildingSlot tier={requiredTier} />
+          )}
+        </PopIn>
+      </SelectionBob>
     </group>
   );
 }
