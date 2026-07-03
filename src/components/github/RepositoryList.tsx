@@ -25,6 +25,7 @@ export function RepositoryList({
     null
   );
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   async function updateSync(
     repo: RepositoryItem,
@@ -32,6 +33,7 @@ export function RepositoryList({
     privateConsent?: boolean
   ) {
     setUpdatingId(repo.id);
+    setErrorMessage(null);
     try {
       const res = await fetch(
         `/api/github/repositories/${repo.id}/sync-enable`,
@@ -41,7 +43,12 @@ export function RepositoryList({
           body: JSON.stringify({ syncEnabled, privateConsent }),
         }
       );
-      if (!res.ok) return;
+      if (!res.ok) {
+        setErrorMessage(
+          "設定の更新に失敗しました。時間をおいて再度お試しください。"
+        );
+        return;
+      }
       const updated = await res.json();
       setRepositories((prev) =>
         prev.map((r) =>
@@ -55,6 +62,8 @@ export function RepositoryList({
         )
       );
       setPendingConsentId(null);
+    } catch {
+      setErrorMessage("通信エラーが発生しました。ネットワーク環境をご確認ください。");
     } finally {
       setUpdatingId(null);
     }
@@ -78,6 +87,9 @@ export function RepositoryList({
 
   return (
     <div className="flex flex-col gap-3">
+      {errorMessage && (
+        <p className="text-destructive text-sm">{errorMessage}</p>
+      )}
       {repositories.map((repo) => (
         <Card key={repo.id}>
           <CardContent className="flex flex-col gap-3 py-4">

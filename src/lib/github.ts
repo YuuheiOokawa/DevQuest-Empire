@@ -1,16 +1,38 @@
 import { Octokit } from "@octokit/rest";
 import { prisma } from "@/lib/prisma";
 
+export class GithubTokenMissingError extends Error {
+  constructor() {
+    super("GitHubアカウントのアクセストークンが見つかりません");
+    this.name = "GithubTokenMissingError";
+  }
+}
+
 export async function getOctokitForUser(userId: string): Promise<Octokit> {
   const account = await prisma.account.findFirst({
     where: { userId, provider: "github" },
   });
 
   if (!account?.access_token) {
-    throw new Error("GitHubアカウントのアクセストークンが見つかりません");
+    throw new GithubTokenMissingError();
   }
 
   return new Octokit({ auth: account.access_token });
+}
+
+/**
+ * GitHub関連の例外を、画面に表示できる日本語メッセージへ変換する。
+ * Rate Limit(403/429)・トークン欠落・その他で文言を出し分ける。
+ */
+export function describeGithubError(error: unknown): string {
+  if (error instanceof GithubTokenMissingError) {
+    return "GitHub連携が切れています。設定画面から再度連携してください。";
+  }
+  const status = (error as { status?: number } | null)?.status;
+  if (status === 403 || status === 429) {
+    return "GitHub APIの利用制限に達しました。しばらく時間をおいて再度お試しください。";
+  }
+  return "GitHubとの通信でエラーが発生しました。時間をおいて再度お試しください。";
 }
 
 export type RepositoryWithSyncState = {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { syncGithubForUser } from "@/lib/sync/syncGithub";
+import { describeGithubError } from "@/lib/github";
 
 export async function POST() {
   const session = await auth();
@@ -13,6 +14,9 @@ export async function POST() {
     return NextResponse.json(result);
   } catch (err) {
     console.error("github sync failed", err);
-    return NextResponse.json({ error: "sync_failed" }, { status: 502 });
+    return NextResponse.json(
+      { error: "sync_failed", message: describeGithubError(err) },
+      { status: 502 }
+    );
   }
 }
