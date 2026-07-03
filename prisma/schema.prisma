@@ -87,6 +87,8 @@ model Player {
   activityComments GithubActivityComment[]
   titles           PlayerTitle[]
   missionProgress  PlayerMissionProgress[]
+  studyLogs        StudyLog[]
+  qualifications   PlayerQualification[]
 }
 
 model TitleMaster {
@@ -265,6 +267,44 @@ model PlayerMissionProgress {
   claimedAt       DateTime?
 
   @@unique([playerId, missionMasterId, periodKey])
+}
+
+model StudyLog {
+  id          String   @id @default(cuid())
+  playerId    String
+  player      Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  category    String
+  title       String
+  minutes     Int
+  note        String?
+  expAwarded  Int
+  recordedAt  DateTime
+  createdAt   DateTime @default(now())
+}
+
+model QualificationMaster {
+  id       String @id @default(cuid())
+  type     String @unique
+  name     String
+  category String
+
+  playerQualifications PlayerQualification[]
+}
+
+model PlayerQualification {
+  id                    String    @id @default(cuid())
+  playerId              String
+  player                Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  qualificationMasterId String
+  qualificationMaster   QualificationMaster @relation(fields: [qualificationMasterId], references: [id])
+  status                String    @default("planning") // "planning" | "passed"
+  examDate              DateTime? @db.Date
+  passedDate            DateTime? @db.Date
+  memo                  String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([playerId, qualificationMasterId])
 }
 
 model GithubActivityComment {

@@ -9,6 +9,8 @@ const NAV_ITEMS = [
   { href: "/missions", label: "ミッション" },
   { href: "/achievements", label: "実績" },
   { href: "/titles", label: "称号" },
+  { href: "/study", label: "学習" },
+  { href: "/qualifications", label: "資格" },
   { href: "/settings/github", label: "GitHub連携" },
 ];
 
