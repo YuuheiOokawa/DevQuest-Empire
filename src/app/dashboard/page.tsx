@@ -7,8 +7,10 @@ import { getActivitySummary } from "@/lib/game/activity";
 import { getVillageBuildingsView } from "@/lib/game/buildings";
 import { getAchievementsView } from "@/lib/game/achievements";
 import { getOrCreateTodaysQuest } from "@/lib/game/quest";
+import { getLoginBonusStatus } from "@/lib/game/loginBonus";
 import { AppNav } from "@/components/layout/AppNav";
 import { SyncButton } from "@/components/github/SyncButton";
+import { LoginBonusCard } from "@/components/login-bonus/LoginBonusCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 
@@ -22,12 +24,14 @@ export default async function DashboardPage() {
   const player = await prisma.player.findUniqueOrThrow({ where: { userId } });
   const { level, currentExp, expToNextLevel } = recalcLevel(player.exp);
 
-  const [activity, buildings, achievements, todaysQuest] = await Promise.all([
-    getActivitySummary(userId),
-    getVillageBuildingsView(userId),
-    getAchievementsView(userId),
-    getOrCreateTodaysQuest(userId),
-  ]);
+  const [activity, buildings, achievements, todaysQuest, loginBonus] =
+    await Promise.all([
+      getActivitySummary(userId),
+      getVillageBuildingsView(userId),
+      getAchievementsView(userId),
+      getOrCreateTodaysQuest(userId),
+      getLoginBonusStatus(userId),
+    ]);
 
   const unlockedBuildingCount = buildings?.filter((b) => b.unlocked).length ?? 0;
   const unlockedAchievementCount =
@@ -51,6 +55,12 @@ export default async function DashboardPage() {
             {currentExp} / {expToNextLevel} EXP
           </p>
         </div>
+
+        <LoginBonusCard
+          claimedToday={loginBonus.claimedToday}
+          streak={loginBonus.streak}
+          todayReward={loginBonus.todayReward}
+        />
 
         <Card>
           <CardContent className="flex flex-col gap-2 py-4">
