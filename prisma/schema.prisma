@@ -186,6 +186,7 @@ model BuildingMaster {
   description String
   metric      String // 建物の成長に使う指標(ActivityMetricsのキー)
   thresholds  Json // レベルごとの閾値の配列。例: [1,5,15,30,50] で最大Lv5
+  requiredTier Int   @default(1) // この建物が出現する村の発展段階(1〜6)
   sortOrder   Int    @default(0)
 
   buildings VillageBuilding[]

@@ -5,13 +5,17 @@ import { prisma } from "../src/lib/prisma";
 
 // 各建物はmetric(ActivityMetricsのキー)とthresholds(レベルごとの閾値、
 // 配列の長さ=最大レベル)で成長する。根拠: 18_Phase3 Part2をPhase5で拡張。
+// requiredTierは村の発展段階(1:村 2:町 3:大きな町 4:帝国 5:王国 6:国)。
+// 現在の発展段階以下の建物のみが村画面に出現する(lib/game/settlement.ts参照)。
 const buildingMasters = [
+  // --- Tier1: 村 ---
   {
     type: "house_small",
     name: "家",
     description: "コミットの積み重ねで発展する住居。",
     metric: "commitCount",
     thresholds: [1, 5, 15, 30, 50],
+    requiredTier: 1,
     sortOrder: 0,
   },
   {
@@ -20,6 +24,7 @@ const buildingMasters = [
     description: "長期的なコミット継続の証となる邸宅。",
     metric: "commitCount",
     thresholds: [50, 100, 200, 400, 800],
+    requiredTier: 1,
     sortOrder: 1,
   },
   {
@@ -28,6 +33,7 @@ const buildingMasters = [
     description: "Issue解決の腕が認められた者が集う工房。",
     metric: "issueCloseCount",
     thresholds: [5, 10, 20, 40, 80],
+    requiredTier: 1,
     sortOrder: 2,
   },
   {
@@ -36,6 +42,7 @@ const buildingMasters = [
     description: "多くの課題を解決してきた開発者が集う場所。",
     metric: "issueCloseCount",
     thresholds: [20, 40, 80, 150, 300],
+    requiredTier: 1,
     sortOrder: 3,
   },
   {
@@ -44,6 +51,7 @@ const buildingMasters = [
     description: "提案(Pull Request)が飛び交う社交場。",
     metric: "prOpenCount",
     thresholds: [5, 10, 20, 40, 80],
+    requiredTier: 1,
     sortOrder: 4,
   },
   {
@@ -52,6 +60,7 @@ const buildingMasters = [
     description: "マージされた成果が積み上がる開発の中心地。",
     metric: "prMergeCount",
     thresholds: [10, 20, 40, 80, 150],
+    requiredTier: 1,
     sortOrder: 5,
   },
   {
@@ -60,6 +69,7 @@ const buildingMasters = [
     description: "プレイヤーの総合的な成長を象徴する城。",
     metric: "level",
     thresholds: [10, 20, 30, 50, 100],
+    requiredTier: 1,
     sortOrder: 6,
   },
   {
@@ -68,6 +78,7 @@ const buildingMasters = [
     description: "学習時間の積み重ねで発展する知識の殿堂。",
     metric: "studyMinutesTotal",
     thresholds: [60, 300, 600, 1200, 3000],
+    requiredTier: 1,
     sortOrder: 7,
   },
   {
@@ -76,6 +87,7 @@ const buildingMasters = [
     description: "資格取得の実績で発展する教育機関。",
     metric: "qualificationsPassedCount",
     thresholds: [1, 2, 3, 5, 8],
+    requiredTier: 1,
     sortOrder: 8,
   },
   {
@@ -84,7 +96,198 @@ const buildingMasters = [
     description: "ミッション達成の積み重ねを称える記念碑。",
     metric: "missionsClaimedTotal",
     thresholds: [5, 15, 30, 60, 100],
+    requiredTier: 1,
     sortOrder: 9,
+  },
+
+  // --- Tier2: 町 ---
+  {
+    type: "market",
+    name: "市場",
+    description: "村を町へと押し上げた交易の証。",
+    metric: "commitCount",
+    thresholds: [100, 150, 250, 400, 600],
+    requiredTier: 2,
+    sortOrder: 10,
+  },
+  {
+    type: "school",
+    name: "学校",
+    description: "町の子らが学ぶ、知識拡大の拠点。",
+    metric: "studyMinutesTotal",
+    thresholds: [500, 1000, 2000, 4000, 8000],
+    requiredTier: 2,
+    sortOrder: 11,
+  },
+  {
+    type: "workshop",
+    name: "工房",
+    description: "職人たちが新しい提案を形にする場所。",
+    metric: "prOpenCount",
+    thresholds: [30, 50, 80, 120, 180],
+    requiredTier: 2,
+    sortOrder: 12,
+  },
+  {
+    type: "watchtower",
+    name: "見張り塔",
+    description: "町を課題(Issue)から守る監視塔。",
+    metric: "issueCloseCount",
+    thresholds: [50, 80, 120, 180, 260],
+    requiredTier: 2,
+    sortOrder: 13,
+  },
+
+  // --- Tier3: 大きな町 ---
+  {
+    type: "cathedral",
+    name: "大聖堂",
+    description: "資格という名の信仰が集う大聖堂。",
+    metric: "qualificationsPassedCount",
+    thresholds: [3, 4, 5, 6, 8],
+    requiredTier: 3,
+    sortOrder: 14,
+  },
+  {
+    type: "arena",
+    name: "闘技場",
+    description: "ミッション達成者を称える闘技場。",
+    metric: "missionsClaimedTotal",
+    thresholds: [40, 60, 90, 130, 180],
+    requiredTier: 3,
+    sortOrder: 15,
+  },
+  {
+    type: "harbor",
+    name: "港",
+    description: "マージされた成果が世界へ出ていく港。",
+    metric: "prMergeCount",
+    thresholds: [60, 90, 130, 180, 250],
+    requiredTier: 3,
+    sortOrder: 16,
+  },
+  {
+    type: "observatory",
+    name: "天文台",
+    description: "プレイヤーの成長を映す天文台。",
+    metric: "level",
+    thresholds: [15, 20, 25, 30, 40],
+    requiredTier: 3,
+    sortOrder: 17,
+  },
+
+  // --- Tier4: 帝国 ---
+  {
+    type: "grand_library",
+    name: "大図書館",
+    description: "帝国の叡智を蓄える大図書館。",
+    metric: "studyMinutesTotal",
+    thresholds: [2000, 3000, 4500, 6500, 9000],
+    requiredTier: 4,
+    sortOrder: 18,
+  },
+  {
+    type: "colosseum",
+    name: "大闘技場",
+    description: "帝国中のコミットを称える大闘技場。",
+    metric: "commitCount",
+    thresholds: [300, 450, 650, 900, 1200],
+    requiredTier: 4,
+    sortOrder: 19,
+  },
+  {
+    type: "senate",
+    name: "元老院",
+    description: "課題解決の実績で選ばれし者が集う。",
+    metric: "issueCloseCount",
+    thresholds: [150, 220, 300, 400, 520],
+    requiredTier: 4,
+    sortOrder: 20,
+  },
+  {
+    type: "shipyard",
+    name: "造船所",
+    description: "帝国の成果を運ぶ船を造る造船所。",
+    metric: "prMergeCount",
+    thresholds: [150, 220, 300, 400, 520],
+    requiredTier: 4,
+    sortOrder: 21,
+  },
+
+  // --- Tier5: 王国 ---
+  {
+    type: "royal_palace",
+    name: "王宮",
+    description: "王国の頂点、プレイヤー自身の成長を映す王宮。",
+    metric: "level",
+    thresholds: [25, 30, 35, 40, 50],
+    requiredTier: 5,
+    sortOrder: 22,
+  },
+  {
+    type: "great_academy",
+    name: "大アカデミー",
+    description: "王国の未来を担う人材を育てる大アカデミー。",
+    metric: "qualificationsPassedCount",
+    thresholds: [5, 6, 7, 8, 10],
+    requiredTier: 5,
+    sortOrder: 23,
+  },
+  {
+    type: "trade_hub",
+    name: "交易拠点",
+    description: "王国中の提案(Pull Request)が集まる交易拠点。",
+    metric: "prOpenCount",
+    thresholds: [150, 220, 300, 400, 520],
+    requiredTier: 5,
+    sortOrder: 24,
+  },
+  {
+    type: "monastery",
+    name: "大修道院",
+    description: "ミッションの積み重ねを見守る大修道院。",
+    metric: "missionsClaimedTotal",
+    thresholds: [100, 140, 190, 250, 320],
+    requiredTier: 5,
+    sortOrder: 25,
+  },
+
+  // --- Tier6: 国 ---
+  {
+    type: "imperial_capital",
+    name: "帝都",
+    description: "国の中心、プレイヤーの集大成である帝都。",
+    metric: "level",
+    thresholds: [40, 50, 60, 75, 100],
+    requiredTier: 6,
+    sortOrder: 26,
+  },
+  {
+    type: "world_tree",
+    name: "世界樹",
+    description: "国中の学びが集う世界樹。",
+    metric: "studyMinutesTotal",
+    thresholds: [6000, 9000, 13000, 18000, 25000],
+    requiredTier: 6,
+    sortOrder: 27,
+  },
+  {
+    type: "grand_colosseum",
+    name: "世界闘技場",
+    description: "国を挙げてコミットを称える世界闘技場。",
+    metric: "commitCount",
+    thresholds: [800, 1200, 1700, 2400, 3200],
+    requiredTier: 6,
+    sortOrder: 28,
+  },
+  {
+    type: "throne_room",
+    name: "玉座の間",
+    description: "国王が全ての達成を見守る玉座の間。",
+    metric: "missionsClaimedTotal",
+    thresholds: [200, 280, 380, 500, 650],
+    requiredTier: 6,
+    sortOrder: 29,
   },
 ];
 

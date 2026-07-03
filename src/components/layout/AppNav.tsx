@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   LayoutDashboard,
+  User,
   Castle,
   Scroll,
   Target,
@@ -16,6 +17,7 @@ import { Button } from "@/components/ui/button";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "ホーム", icon: LayoutDashboard },
+  { href: "/profile", label: "プロフィール", icon: User },
   { href: "/village", label: "村", icon: Castle },
   { href: "/quest", label: "クエスト", icon: Scroll },
   { href: "/missions", label: "ミッション", icon: Target },

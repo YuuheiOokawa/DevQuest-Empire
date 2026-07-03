@@ -67,6 +67,7 @@ export type CompleteQuestResult = {
   newLevel: number;
   unlockedBuildings: string[];
   leveledUpBuildings: string[];
+  tierUpTo: string | null;
   unlockedAchievements: string[];
   unlockedTitles: string[];
 };
@@ -106,8 +107,8 @@ export async function completeQuest(
 
   const buildingResult = updatedPlayer.village
     ? await updateVillageBuildings(userId, updatedPlayer.village.id, level)
-    : { newlyUnlocked: [], leveledUp: [] };
-  const { unlockedBuildings, leveledUpBuildings } =
+    : { newlyUnlocked: [], leveledUp: [], tierUpTo: null };
+  const { unlockedBuildings, leveledUpBuildings, tierUpTo } =
     formatBuildingUpdate(buildingResult);
   const unlockedAchievements = await unlockAchievements(userId, false);
   const unlockedTitles = await unlockTitles(player.id, level);
@@ -116,6 +117,7 @@ export async function completeQuest(
     newLevel: level,
     unlockedBuildings,
     leveledUpBuildings,
+    tierUpTo,
     unlockedAchievements,
     unlockedTitles,
   };
