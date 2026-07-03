@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { getRepositoriesForUser } from "@/lib/github";
+import { getRepositoriesForUser, describeGithubError } from "@/lib/github";
 import { RepositoryList } from "@/components/github/RepositoryList";
 import { AppNav } from "@/components/layout/AppNav";
 
@@ -14,8 +14,8 @@ export default async function GithubSettingsPage() {
   let error: string | null = null;
   try {
     repositories = await getRepositoriesForUser(session.user.id);
-  } catch {
-    error = "GitHubリポジトリの取得に失敗しました。時間をおいて再度お試しください。";
+  } catch (err) {
+    error = describeGithubError(err);
   }
 
   return (
@@ -30,7 +30,15 @@ export default async function GithubSettingsPage() {
       </div>
 
       {error ? (
-        <p className="text-destructive text-sm">{error}</p>
+        <div className="flex flex-col items-start gap-2">
+          <p className="text-destructive text-sm">{error}</p>
+          <a
+            href="/settings/github"
+            className="text-sm underline hover:no-underline"
+          >
+            再読み込み
+          </a>
+        </div>
       ) : (
         <RepositoryList
           initialRepositories={repositories.map((r) => ({
