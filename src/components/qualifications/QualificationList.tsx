@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { formatGrowthNotifications } from "@/lib/game/notifications";
 
 export type QualificationItem = {
   id: string;
@@ -33,6 +34,9 @@ export function QualificationList({
   const [examDateInput, setExamDateInput] = useState("");
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<Record<string, string[]>>(
+    {}
+  );
 
   async function handlePlan(qualificationId: string) {
     if (!examDateInput) return;
@@ -94,6 +98,7 @@ export function QualificationList({
       const res = await fetch(`/api/qualifications/${qualificationId}/pass`, {
         method: "POST",
       });
+      const result = await res.json();
       if (!res.ok) {
         setError("更新に失敗しました。時間をおいて再度お試しください。");
         return;
@@ -109,6 +114,10 @@ export function QualificationList({
             : q
         )
       );
+      setNotifications((prev) => ({
+        ...prev,
+        [qualificationId]: formatGrowthNotifications(result),
+      }));
       router.refresh();
     } finally {
       setPendingId(null);
@@ -202,6 +211,11 @@ export function QualificationList({
                 </Button>
               </div>
             )}
+            {notifications[q.id]?.map((line) => (
+              <p key={line} className="text-primary text-xs font-medium">
+                {line}
+              </p>
+            ))}
           </CardContent>
         </Card>
       ))}

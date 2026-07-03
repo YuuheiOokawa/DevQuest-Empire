@@ -4,16 +4,19 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatGrowthNotifications } from "@/lib/game/notifications";
 
 export function SyncButton() {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<string[]>([]);
   const [isError, setIsError] = useState(false);
 
   async function handleSync() {
     setPending(true);
     setMessage(null);
+    setNotifications([]);
     setIsError(false);
     try {
       const res = await fetch("/api/github/sync", { method: "POST" });
@@ -26,6 +29,7 @@ export function SyncButton() {
       setMessage(
         `Commit+${result.newCommits} Issue+${result.newIssues} PR+${result.newPullRequests} (獲得EXP: ${result.expGained})`
       );
+      setNotifications(formatGrowthNotifications(result));
       router.refresh();
     } catch {
       setIsError(true);
@@ -52,6 +56,11 @@ export function SyncButton() {
           {message}
         </p>
       )}
+      {notifications.map((line) => (
+        <p key={line} className="text-primary text-xs font-medium">
+          {line}
+        </p>
+      ))}
     </div>
   );
 }

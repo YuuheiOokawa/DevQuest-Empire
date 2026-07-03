@@ -6,7 +6,7 @@ import {
   fetchPullRequestsByUser,
 } from "@/lib/github";
 import { EXP_RATES, recalcLevel } from "@/lib/game/exp";
-import { unlockBuildings } from "@/lib/game/buildings";
+import { updateVillageBuildings, formatBuildingUpdate } from "@/lib/game/buildings";
 import { updateStreak, unlockAchievements } from "@/lib/game/achievements";
 import { unlockTitles } from "@/lib/game/titles";
 
@@ -17,6 +17,7 @@ export type SyncResult = {
   expGained: number;
   newLevel: number;
   unlockedBuildings: string[];
+  leveledUpBuildings: string[];
   unlockedAchievements: string[];
   unlockedTitles: string[];
 };
@@ -166,9 +167,11 @@ export async function syncGithubForUser(userId: string): Promise<SyncResult> {
     await prisma.player.update({ where: { userId }, data: { level } });
   }
 
-  const unlockedBuildings = updatedPlayer.village
-    ? await unlockBuildings(userId, updatedPlayer.village.id, level)
-    : [];
+  const buildingResult = updatedPlayer.village
+    ? await updateVillageBuildings(userId, updatedPlayer.village.id, level)
+    : { newlyUnlocked: [], leveledUp: [] };
+  const { unlockedBuildings, leveledUpBuildings } =
+    formatBuildingUpdate(buildingResult);
 
   await updateStreak(userId, hasActivityToday);
   const unlockedAchievements = await unlockAchievements(userId, isFirstSync);
@@ -181,6 +184,7 @@ export async function syncGithubForUser(userId: string): Promise<SyncResult> {
     expGained,
     newLevel: level,
     unlockedBuildings,
+    leveledUpBuildings,
     unlockedAchievements,
     unlockedTitles,
   };

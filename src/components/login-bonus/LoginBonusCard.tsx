@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Gift } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { formatGrowthNotifications } from "@/lib/game/notifications";
 
 export function LoginBonusCard({
   claimedToday,
@@ -19,17 +20,20 @@ export function LoginBonusCard({
   const [pending, setPending] = useState(false);
   const [claimed, setClaimed] = useState(claimedToday);
   const [error, setError] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<string[]>([]);
 
   async function handleClaim() {
     setPending(true);
     setError(null);
     try {
       const res = await fetch("/api/login-bonus/claim", { method: "POST" });
+      const result = await res.json();
       if (!res.ok) {
         setError("受け取りに失敗しました。時間をおいて再度お試しください。");
         return;
       }
       setClaimed(true);
+      setNotifications(formatGrowthNotifications(result));
       router.refresh();
     } finally {
       setPending(false);
@@ -57,6 +61,15 @@ export function LoginBonusCard({
         )}
       </CardContent>
       {error && <p className="text-destructive px-4 pb-3 text-sm">{error}</p>}
+      {notifications.length > 0 && (
+        <div className="flex flex-col gap-0.5 px-4 pb-3">
+          {notifications.map((line) => (
+            <p key={line} className="text-primary text-xs font-medium">
+              {line}
+            </p>
+          ))}
+        </div>
+      )}
     </Card>
   );
 }

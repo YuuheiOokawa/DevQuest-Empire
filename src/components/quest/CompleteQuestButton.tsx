@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { formatGrowthNotifications } from "@/lib/game/notifications";
 
 export function CompleteQuestButton({ questId }: { questId: string }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<string[]>([]);
 
   async function handleComplete() {
     setPending(true);
@@ -16,10 +18,12 @@ export function CompleteQuestButton({ questId }: { questId: string }) {
       const res = await fetch(`/api/quest/${questId}/complete`, {
         method: "POST",
       });
+      const result = await res.json();
       if (!res.ok) {
         setError("クエストの完了に失敗しました。");
         return;
       }
+      setNotifications(formatGrowthNotifications(result));
       router.refresh();
     } finally {
       setPending(false);
@@ -32,6 +36,11 @@ export function CompleteQuestButton({ questId }: { questId: string }) {
         {pending ? "処理中..." : "完了にする"}
       </Button>
       {error && <p className="text-destructive text-sm">{error}</p>}
+      {notifications.map((line) => (
+        <p key={line} className="text-primary text-sm font-medium">
+          {line}
+        </p>
+      ))}
     </div>
   );
 }

@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
-import { Castle, Lock, Sparkles } from "lucide-react";
+import { Castle, Lock } from "lucide-react";
 import { auth } from "@/lib/auth";
-import { getVillageBuildingsView } from "@/lib/game/buildings";
+import { getVillageBuildingsView, getVillageScore } from "@/lib/game/buildings";
 import { AppNav } from "@/components/layout/AppNav";
 import { BuildingIcon } from "@/components/village/BuildingIcon";
+import { RankBadge } from "@/components/village/RankBadge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -15,10 +16,11 @@ export default async function VillagePage() {
   }
 
   const buildings = await getVillageBuildingsView(session.user.id);
-  const unlockedCount = buildings?.filter((b) => b.unlocked).length ?? 0;
-  const totalCount = buildings?.length ?? 0;
-  const developmentRate =
-    totalCount > 0 ? Math.round((unlockedCount / totalCount) * 100) : 0;
+  const score = buildings ? getVillageScore(buildings) : null;
+  const scoreRate =
+    score && score.maxTotalLevel > 0
+      ? Math.round((score.totalLevel / score.maxTotalLevel) * 100)
+      : 0;
 
   return (
     <>
@@ -30,71 +32,92 @@ export default async function VillagePage() {
             村
           </h1>
           <p className="text-muted-foreground text-sm">
-            GitHubでの活動に応じて建物が増えていきます。
+            GitHub活動・学習・資格・ミッションの積み重ねで建物が発展します。
           </p>
         </div>
 
-        {!buildings ? (
+        {!buildings || !score ? (
           <p className="text-destructive text-sm">
             村の情報を取得できませんでした。
           </p>
         ) : (
           <>
             <Card>
-              <CardContent className="flex flex-col gap-2 py-4">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-1.5 font-semibold">
-                    <Sparkles className="text-primary size-4" />
-                    村の発展度
-                  </span>
-                  <span className="text-muted-foreground text-sm">
-                    {unlockedCount} / {totalCount}
-                  </span>
+              <CardContent className="flex items-center gap-4 py-4">
+                <RankBadge rank={score.rank} />
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold">村ランク</span>
+                    <span className="text-muted-foreground text-sm">
+                      発展度 {score.totalLevel} / {score.maxTotalLevel}
+                    </span>
+                  </div>
+                  <Progress value={scoreRate} />
                 </div>
-                <Progress value={developmentRate} />
               </CardContent>
             </Card>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {buildings.map((building) => (
-                <Card
-                  key={building.type}
-                  className={building.unlocked ? "" : "opacity-60"}
-                >
-                  <CardContent className="flex items-start gap-3 py-4">
-                    <BuildingIcon
-                      type={building.type}
-                      unlocked={building.unlocked}
-                    />
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="truncate font-medium">
-                          {building.name}
-                        </span>
-                        {building.unlocked ? (
-                          <Badge className="shrink-0">アンロック済み</Badge>
-                        ) : (
-                          <Badge variant="secondary" className="shrink-0 gap-1">
-                            <Lock className="size-3" />
-                            未アンロック
-                          </Badge>
+              {buildings.map((building) => {
+                const isMaxed = building.maxLevel > 0 && building.level >= building.maxLevel;
+                return (
+                  <Card
+                    key={building.type}
+                    className={building.unlocked ? "" : "opacity-60"}
+                  >
+                    <CardContent className="flex items-start gap-3 py-4">
+                      <BuildingIcon
+                        type={building.type}
+                        unlocked={building.unlocked}
+                      />
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate font-medium">
+                            {building.name}
+                          </span>
+                          {building.unlocked ? (
+                            <Badge className="shrink-0">
+                              {isMaxed ? "MAX" : `Lv.${building.level}/${building.maxLevel}`}
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="shrink-0 gap-1">
+                              <Lock className="size-3" />
+                              未解放
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-muted-foreground text-sm">
+                          {building.description}
+                        </p>
+                        {!isMaxed && building.nextThreshold !== null && (
+                          <div className="space-y-0.5">
+                            <Progress
+                              value={
+                                (building.currentMetricValue /
+                                  building.nextThreshold) *
+                                100
+                              }
+                              className="h-1.5"
+                            />
+                            <p className="text-muted-foreground text-xs">
+                              次のレベルまで {building.currentMetricValue} /{" "}
+                              {building.nextThreshold}
+                            </p>
+                          </div>
+                        )}
+                        {building.unlocked && building.unlockedAt && (
+                          <p className="text-muted-foreground text-xs">
+                            建設日:{" "}
+                            {new Date(building.unlockedAt).toLocaleDateString(
+                              "ja-JP"
+                            )}
+                          </p>
                         )}
                       </div>
-                      <p className="text-muted-foreground text-sm">
-                        {building.description}
-                      </p>
-                      {building.unlocked && building.unlockedAt && (
-                        <p className="text-muted-foreground text-xs">
-                          建設日:{" "}
-                          {new Date(building.unlockedAt).toLocaleDateString(
-                            "ja-JP"
-                          )}
-                        </p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </>
         )}
