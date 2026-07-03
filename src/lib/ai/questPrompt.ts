@@ -11,21 +11,27 @@ const DIFFICULTY_EXP: Record<Difficulty, number> = {
   hard: 50,
 };
 
-const FALLBACK_QUESTS: { title: string; description: string; difficulty: Difficulty }[] = [
-  { title: "READMEを見直す", description: "自分のリポジトリのREADMEを読み返し、誤字や古い情報を1つ直してみましょう。", difficulty: "easy" },
-  { title: "小さなリファクタリング", description: "気になっていた関数や変数名を1つ、わかりやすい名前に変更してみましょう。", difficulty: "easy" },
-  { title: "テストを1つ追加する", description: "既存の関数に対して、まだ無いテストケースを1つ書いてみましょう。", difficulty: "medium" },
-  { title: "Issueを1件起票する", description: "気になっているバグや改善点をIssueとして書き出してみましょう。", difficulty: "easy" },
-  { title: "ドキュメントを書く", description: "実装した機能について、簡単な説明をコメントかドキュメントに残しましょう。", difficulty: "easy" },
-  { title: "依存パッケージを確認する", description: "package.jsonの依存関係に古いものがないか確認してみましょう。", difficulty: "medium" },
-  { title: "小さなバグを1つ直す", description: "放置していた小さな不具合を1つ選んで修正してみましょう。", difficulty: "medium" },
-  { title: "直近のコミットを見返す", description: "自分の直近のコミットを見直し、改善できる点を探してみましょう。", difficulty: "easy" },
-  { title: "新しいライブラリを調べる", description: "興味のあるライブラリのドキュメントを15分読んでみましょう。", difficulty: "easy" },
-  { title: "エラーハンドリングを見直す", description: "1つの関数のエラーハンドリングを見直し、改善してみましょう。", difficulty: "hard" },
-];
+// フォールバック文言はFallbackQuestテーブルで管理する(prisma/seed.ts参照)。
+// DB未投入等の想定外の事態に備え、最終手段として1件だけコード内に保持する。
+const ULTIMATE_FALLBACK_QUEST = {
+  title: "小さな一歩を踏み出す",
+  description: "今日は何か1つ、小さな改善に取り組んでみましょう。",
+  difficulty: "easy" as Difficulty,
+};
 
-function pickFallbackQuest() {
-  return FALLBACK_QUESTS[Math.floor(Math.random() * FALLBACK_QUESTS.length)];
+async function pickFallbackQuest(): Promise<{
+  title: string;
+  description: string;
+  difficulty: Difficulty;
+}> {
+  const quests = await prisma.fallbackQuest.findMany();
+  if (quests.length === 0) return ULTIMATE_FALLBACK_QUEST;
+  const picked = quests[Math.floor(Math.random() * quests.length)];
+  return {
+    title: picked.title,
+    description: picked.description,
+    difficulty: picked.difficulty as Difficulty,
+  };
 }
 
 export type GeneratedQuest = {
@@ -117,7 +123,7 @@ ${recentQuests.map((q) => `- ${q.title}`).join("\n") || "(なし)"}
     };
   } catch (err) {
     console.error("AI quest generation failed, using fallback quest", err);
-    const fallback = pickFallbackQuest();
+    const fallback = await pickFallbackQuest();
     return { ...fallback, expReward: DIFFICULTY_EXP[fallback.difficulty] };
   }
 }

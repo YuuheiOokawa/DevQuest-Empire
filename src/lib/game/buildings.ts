@@ -16,17 +16,6 @@ const unlockConditionSchema = z.object({
   value: z.number(),
 });
 
-// 村画面での表示順(18_Phase3 Part2の並び)
-const DISPLAY_ORDER = [
-  "house_small",
-  "house_large",
-  "blacksmith",
-  "guild",
-  "tavern",
-  "dev_base",
-  "castle",
-];
-
 /**
  * 未アンロックの建物を判定し、条件を満たしたものをアンロックする。
  * 戻り値は新たにアンロックされた建物名の一覧。
@@ -92,14 +81,11 @@ export async function getVillageBuildingsView(
     player.village.buildings.map((b) => [b.buildingMasterId, b.unlockedAt])
   );
 
-  const allBuildings = await prisma.buildingMaster.findMany();
+  const allBuildings = await prisma.buildingMaster.findMany({
+    orderBy: { sortOrder: "asc" },
+  });
 
-  return allBuildings
-    .slice()
-    .sort(
-      (a, b) => DISPLAY_ORDER.indexOf(a.type) - DISPLAY_ORDER.indexOf(b.type)
-    )
-    .map((building) => ({
+  return allBuildings.map((building) => ({
       type: building.type,
       name: building.name,
       description: building.description,
