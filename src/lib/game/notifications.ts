@@ -7,12 +7,16 @@ export type GrowthNotificationResult = {
   leveledUpBuildings?: string[];
   unlockedAchievements?: string[];
   unlockedTitles?: string[];
+  tierUpTo?: string | null;
 };
 
 export function formatGrowthNotifications(
   result: GrowthNotificationResult
 ): string[] {
   const lines: string[] = [];
+  if (result.tierUpTo) {
+    lines.push(`村が発展しました: ${result.tierUpTo}に到達！`);
+  }
   if (result.unlockedBuildings?.length) {
     lines.push(`新しい建物: ${result.unlockedBuildings.join("、")}`);
   }

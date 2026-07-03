@@ -14,7 +14,11 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { recalcLevel } from "@/lib/game/exp";
 import { getActivitySummary } from "@/lib/game/activity";
-import { getVillageBuildingsView, getVillageScore } from "@/lib/game/buildings";
+import {
+  getVillageBuildingsView,
+  getVillageScore,
+  getSettlementInfo,
+} from "@/lib/game/buildings";
 import { getCompanyRank } from "@/lib/game/company";
 import { getAchievementsView } from "@/lib/game/achievements";
 import { getOrCreateTodaysQuest } from "@/lib/game/quest";
@@ -24,6 +28,7 @@ import { getMissionsView } from "@/lib/game/missions";
 import { getStudySummary } from "@/lib/game/study";
 import { getQualificationsView } from "@/lib/game/qualifications";
 import { AppNav } from "@/components/layout/AppNav";
+import { SettlementBadge } from "@/components/village/SettlementBadge";
 import { SyncButton } from "@/components/github/SyncButton";
 import { LoginBonusCard } from "@/components/login-bonus/LoginBonusCard";
 import { Card, CardContent } from "@/components/ui/card";
@@ -50,6 +55,7 @@ export default async function DashboardPage() {
     missions,
     studySummary,
     qualifications,
+    settlement,
   ] = await Promise.all([
     getActivitySummary(userId),
     getVillageBuildingsView(userId),
@@ -61,6 +67,7 @@ export default async function DashboardPage() {
     getMissionsView(userId),
     getStudySummary(userId, 1),
     getQualificationsView(userId),
+    getSettlementInfo(userId),
   ]);
 
   const unlockedAchievementCount =
@@ -78,17 +85,21 @@ export default async function DashboardPage() {
       <AppNav />
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8">
         <div className="flex items-center justify-between gap-4">
-          <div className="min-w-0">
-            {equippedTitle && (
-              <p className="text-primary truncate text-xs font-medium">
-                {equippedTitle}
+          <Link href="/profile" className="flex min-w-0 items-center gap-3">
+            {settlement && <SettlementBadge tier={settlement.tier} />}
+            <div className="min-w-0">
+              {equippedTitle && (
+                <p className="text-primary truncate text-xs font-medium">
+                  {equippedTitle}
+                </p>
+              )}
+              <h1 className="truncate text-2xl font-bold">{player.name}</h1>
+              <p className="text-muted-foreground text-sm">
+                {settlement?.roleName ?? "村の青年"} ・ Lv.{level} ・{" "}
+                {companyRank.rank}
               </p>
-            )}
-            <h1 className="truncate text-2xl font-bold">{player.name}</h1>
-            <p className="text-muted-foreground text-sm">
-              Lv.{level} ・ {companyRank.rank}
-            </p>
-          </div>
+            </div>
+          </Link>
           <SyncButton />
         </div>
 

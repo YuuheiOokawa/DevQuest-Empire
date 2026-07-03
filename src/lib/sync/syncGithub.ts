@@ -18,6 +18,7 @@ export type SyncResult = {
   newLevel: number;
   unlockedBuildings: string[];
   leveledUpBuildings: string[];
+  tierUpTo: string | null;
   unlockedAchievements: string[];
   unlockedTitles: string[];
 };
@@ -169,8 +170,8 @@ export async function syncGithubForUser(userId: string): Promise<SyncResult> {
 
   const buildingResult = updatedPlayer.village
     ? await updateVillageBuildings(userId, updatedPlayer.village.id, level)
-    : { newlyUnlocked: [], leveledUp: [] };
-  const { unlockedBuildings, leveledUpBuildings } =
+    : { newlyUnlocked: [], leveledUp: [], tierUpTo: null };
+  const { unlockedBuildings, leveledUpBuildings, tierUpTo } =
     formatBuildingUpdate(buildingResult);
 
   await updateStreak(userId, hasActivityToday);
@@ -185,6 +186,7 @@ export async function syncGithubForUser(userId: string): Promise<SyncResult> {
     newLevel: level,
     unlockedBuildings,
     leveledUpBuildings,
+    tierUpTo,
     unlockedAchievements,
     unlockedTitles,
   };

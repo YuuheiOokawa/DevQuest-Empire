@@ -1,9 +1,11 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { computeActivityMetrics, type ActivityMetrics } from "@/lib/game/metrics";
+import { computeSettlementTier, type SettlementInfo } from "@/lib/game/settlement";
 
 // 根拠: 18_Phase3_Detailed_Design.md Part2 を拡張し、建物ごとに
-// レベル制(Lv1〜thresholds.length)を導入する(Phase5)。
+// レベル制(Lv1〜thresholds.length)を導入(Phase5)。さらに発展段階
+// (村→町→大きな町→帝国→王国→国)による建物の出現ゲートを追加(Phase6)。
 
 const thresholdsSchema = z.array(z.number()).min(1);
 
@@ -16,39 +18,108 @@ function computeLevelForMetric(metricValue: number, thresholds: number[]): numbe
   return level;
 }
 
+/**
+ * 全建物マスタについて、現在の活動量から「あるべきレベル(未解放でも0以上で計算)」を
+ * 求め、発展段階(tier)も同時に算出する。tierの判定はDB上の解放状態に依存せず、
+ * 常に生の活動量から再計算するため、解放前後で矛盾が起きない。
+ */
+async function computeBuildingState(userId: string, playerLevel: number) {
+  const metrics = await computeActivityMetrics(userId, playerLevel);
+  const allBuildings = await prisma.buildingMaster.findMany({
+    orderBy: { sortOrder: "asc" },
+  });
+
+  const potentialLevels = new Map<string, number>();
+  const maxLevels = new Map<string, number>();
+
+  for (const building of allBuildings) {
+    const thresholds = thresholdsSchema.safeParse(building.thresholds);
+    const thresholdArr = thresholds.success ? thresholds.data : [];
+    maxLevels.set(building.id, thresholdArr.length);
+
+    if (!thresholds.success || !building.metric) {
+      potentialLevels.set(building.id, 0);
+      continue;
+    }
+    const metricValue = metrics[building.metric as keyof ActivityMetrics];
+    const level =
+      typeof metricValue === "number"
+        ? computeLevelForMetric(metricValue, thresholds.data)
+        : 0;
+    potentialLevels.set(building.id, level);
+  }
+
+  const levelsByTier: Record<number, number> = {};
+  const maxLevelsByTier: Record<number, number> = {};
+  const buildingCountByTier: Record<number, number> = {};
+  for (const building of allBuildings) {
+    const tier = building.requiredTier;
+    levelsByTier[tier] = (levelsByTier[tier] ?? 0) + (potentialLevels.get(building.id) ?? 0);
+    maxLevelsByTier[tier] = (maxLevelsByTier[tier] ?? 0) + (maxLevels.get(building.id) ?? 0);
+    buildingCountByTier[tier] = (buildingCountByTier[tier] ?? 0) + 1;
+  }
+
+  const settlement = computeSettlementTier(levelsByTier, maxLevelsByTier, buildingCountByTier);
+
+  return {
+    metrics,
+    allBuildings,
+    potentialLevels,
+    maxLevels,
+    maxLevelsByTier,
+    buildingCountByTier,
+    settlement,
+  };
+}
+
 export type BuildingUpdateResult = {
   newlyUnlocked: string[];
   leveledUp: { name: string; level: number }[];
+  tierUpTo: string | null;
 };
 
 /**
- * 建物のレベルを最新の活動量に合わせて更新する。
- * 新規アンロック(Lv0→Lv1以上)とレベルアップ(既存Lvの上昇)を区別して返す。
+ * 建物のレベルを最新の活動量に合わせて更新する。発展段階がまだ解放していない
+ * (requiredTierが現在のtierを超える)建物は対象外とする。
  */
 export async function updateVillageBuildings(
   userId: string,
   villageId: string,
   level: number
 ): Promise<BuildingUpdateResult> {
-  const metrics = await computeActivityMetrics(userId, level);
+  const {
+    allBuildings,
+    potentialLevels,
+    maxLevelsByTier,
+    buildingCountByTier,
+    settlement,
+  } = await computeBuildingState(userId, level);
 
-  const [allBuildings, existingRows] = await Promise.all([
-    prisma.buildingMaster.findMany(),
-    prisma.villageBuilding.findMany({ where: { villageId } }),
-  ]);
+  const existingRows = await prisma.villageBuilding.findMany({ where: { villageId } });
   const existingMap = new Map(existingRows.map((r) => [r.buildingMasterId, r]));
+
+  // 更新前(=現在DBに保存されている建物レベル)から見た発展段階を求め、
+  // 今回の更新で新たにtierが上がったかどうかを判定する。
+  const previousLevelsByTier: Record<number, number> = {};
+  for (const row of existingRows) {
+    const building = allBuildings.find((b) => b.id === row.buildingMasterId);
+    if (!building) continue;
+    previousLevelsByTier[building.requiredTier] =
+      (previousLevelsByTier[building.requiredTier] ?? 0) + row.level;
+  }
+  const previousSettlement = computeSettlementTier(
+    previousLevelsByTier,
+    maxLevelsByTier,
+    buildingCountByTier
+  );
 
   const newlyUnlocked: string[] = [];
   const leveledUp: { name: string; level: number }[] = [];
 
   for (const building of allBuildings) {
-    const thresholds = thresholdsSchema.safeParse(building.thresholds);
-    if (!thresholds.success || !building.metric) continue;
+    if (building.requiredTier > settlement.tier) continue;
 
-    const metricValue = metrics[building.metric as keyof ActivityMetrics];
-    if (typeof metricValue !== "number") continue;
-
-    const targetLevel = computeLevelForMetric(metricValue, thresholds.data);
+    const targetLevel = potentialLevels.get(building.id) ?? 0;
     if (targetLevel === 0) continue;
 
     const existing = existingMap.get(building.id);
@@ -69,19 +140,26 @@ export async function updateVillageBuildings(
     }
   }
 
-  return { newlyUnlocked, leveledUp };
+  return {
+    newlyUnlocked,
+    leveledUp,
+    tierUpTo:
+      settlement.tier > previousSettlement.tier ? settlement.tierName : null,
+  };
 }
 
 /** 呼び出し元での通知表示用に、建物更新結果を文字列配列へ整形する */
 export function formatBuildingUpdate(result: BuildingUpdateResult): {
   unlockedBuildings: string[];
   leveledUpBuildings: string[];
+  tierUpTo: string | null;
 } {
   return {
     unlockedBuildings: result.newlyUnlocked,
     leveledUpBuildings: result.leveledUp.map(
       (b) => `${b.name} → Lv.${b.level}`
     ),
+    tierUpTo: result.tierUpTo,
   };
 }
 
@@ -95,10 +173,12 @@ export type VillageBuildingView = {
   unlockedAt: Date | null;
   currentMetricValue: number;
   nextThreshold: number | null;
+  requiredTier: number;
 };
 
 /**
- * 村画面/API用に、全建物マスタと自分の村のレベル状況をマージして返す。
+ * 村画面/API用に、現在の発展段階で解放されている建物マスタと
+ * 自分の村のレベル状況をマージして返す。
  */
 export async function getVillageBuildingsView(
   userId: string
@@ -110,37 +190,49 @@ export async function getVillageBuildingsView(
 
   if (!player?.village) return null;
 
-  const metrics = await computeActivityMetrics(userId, player.level);
+  const { metrics, allBuildings, maxLevels, settlement } = await computeBuildingState(
+    userId,
+    player.level
+  );
   const existingMap = new Map(
     player.village.buildings.map((b) => [b.buildingMasterId, b])
   );
 
-  const allBuildings = await prisma.buildingMaster.findMany({
-    orderBy: { sortOrder: "asc" },
-  });
+  return allBuildings
+    .filter((building) => building.requiredTier <= settlement.tier)
+    .map((building) => {
+      const thresholds = thresholdsSchema.safeParse(building.thresholds);
+      const thresholdArr = thresholds.success ? thresholds.data : [];
+      const metricValue = building.metric
+        ? ((metrics[building.metric as keyof ActivityMetrics] as number) ?? 0)
+        : 0;
+      const existing = existingMap.get(building.id);
+      const level = existing?.level ?? 0;
+      const maxLevel = maxLevels.get(building.id) ?? 0;
 
-  return allBuildings.map((building) => {
-    const thresholds = thresholdsSchema.safeParse(building.thresholds);
-    const thresholdArr = thresholds.success ? thresholds.data : [];
-    const metricValue = building.metric
-      ? ((metrics[building.metric as keyof ActivityMetrics] as number) ?? 0)
-      : 0;
-    const existing = existingMap.get(building.id);
-    const level = existing?.level ?? 0;
-    const maxLevel = thresholdArr.length;
+      return {
+        type: building.type,
+        name: building.name,
+        description: building.description,
+        level,
+        maxLevel,
+        unlocked: !!existing,
+        unlockedAt: existing?.unlockedAt ?? null,
+        currentMetricValue: metricValue,
+        nextThreshold: level < maxLevel ? thresholdArr[level] : null,
+        requiredTier: building.requiredTier,
+      };
+    });
+}
 
-    return {
-      type: building.type,
-      name: building.name,
-      description: building.description,
-      level,
-      maxLevel,
-      unlocked: !!existing,
-      unlockedAt: existing?.unlockedAt ?? null,
-      currentMetricValue: metricValue,
-      nextThreshold: level < maxLevel ? thresholdArr[level] : null,
-    };
-  });
+/** 村画面/ダッシュボード用に、現在の発展段階(村〜国、役職)を取得する */
+export async function getSettlementInfo(
+  userId: string
+): Promise<SettlementInfo | null> {
+  const player = await prisma.player.findUnique({ where: { userId } });
+  if (!player) return null;
+  const { settlement } = await computeBuildingState(userId, player.level);
+  return settlement;
 }
 
 export type VillageRank = "S" | "A" | "B" | "C" | "D" | "E";
@@ -160,7 +252,7 @@ function rankFromScore(rate: number): VillageRank {
   return "E";
 }
 
-/** 村の発展度スコア(全建物のレベル合計)とランクを算出する */
+/** 現在解放されている建物群でのスコア(レベル合計)とランクを算出する */
 export function getVillageScore(
   buildings: VillageBuildingView[]
 ): VillageScoreView {
