@@ -19,11 +19,7 @@ export default async function DashboardPage() {
   }
   const userId = session.user.id;
 
-  const player = await prisma.player.findUnique({ where: { userId } });
-  if (!player) {
-    redirect("/login");
-  }
-
+  const player = await prisma.player.findUniqueOrThrow({ where: { userId } });
   const { level, currentExp, expToNextLevel } = recalcLevel(player.exp);
 
   const [activity, buildings, achievements, todaysQuest] = await Promise.all([
