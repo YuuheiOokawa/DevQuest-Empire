@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { generateTodaysQuest } from "@/lib/ai/questPrompt";
 import { recalcLevel } from "@/lib/game/exp";
-import { unlockBuildings } from "@/lib/game/buildings";
+import { updateVillageBuildings, formatBuildingUpdate } from "@/lib/game/buildings";
 import { unlockAchievements } from "@/lib/game/achievements";
 import { unlockTitles } from "@/lib/game/titles";
 
@@ -66,6 +66,7 @@ export async function getRecentQuestHistory(
 export type CompleteQuestResult = {
   newLevel: number;
   unlockedBuildings: string[];
+  leveledUpBuildings: string[];
   unlockedAchievements: string[];
   unlockedTitles: string[];
 };
@@ -103,11 +104,19 @@ export async function completeQuest(
     await prisma.player.update({ where: { id: player.id }, data: { level } });
   }
 
-  const unlockedBuildings = updatedPlayer.village
-    ? await unlockBuildings(userId, updatedPlayer.village.id, level)
-    : [];
+  const buildingResult = updatedPlayer.village
+    ? await updateVillageBuildings(userId, updatedPlayer.village.id, level)
+    : { newlyUnlocked: [], leveledUp: [] };
+  const { unlockedBuildings, leveledUpBuildings } =
+    formatBuildingUpdate(buildingResult);
   const unlockedAchievements = await unlockAchievements(userId, false);
   const unlockedTitles = await unlockTitles(player.id, level);
 
-  return { newLevel: level, unlockedBuildings, unlockedAchievements, unlockedTitles };
+  return {
+    newLevel: level,
+    unlockedBuildings,
+    leveledUpBuildings,
+    unlockedAchievements,
+    unlockedTitles,
+  };
 }

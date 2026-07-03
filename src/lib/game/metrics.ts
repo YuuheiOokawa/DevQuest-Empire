@@ -5,34 +5,63 @@ export type ActivityMetrics = {
   issueCloseCount: number;
   prOpenCount: number;
   prMergeCount: number;
+  studyMinutesTotal: number;
+  qualificationsPassedCount: number;
+  missionsClaimedTotal: number;
   level: number;
 };
 
 /**
- * ユーザーのGitHub活動集計。建物アンロック(buildings.ts)と
- * 実績判定(achievements.ts)の両方から利用する共通集計。
+ * ユーザーの活動集計(GitHub + 学習 + 資格 + ミッション)。
+ * 建物成長(buildings.ts)・実績判定(achievements.ts)の両方から利用する共通集計。
  */
 export async function computeActivityMetrics(
   userId: string,
   level: number
 ): Promise<ActivityMetrics> {
-  const [commitCount, issueCloseCount, prOpenCount, prMergeCount] =
-    await Promise.all([
-      prisma.githubCommit.count({
-        where: { repository: { userId } },
-      }),
-      prisma.githubIssue.count({
-        where: { state: "closed", repository: { userId } },
-      }),
-      prisma.githubPullRequest.count({
-        where: { repository: { userId } },
-      }),
-      prisma.githubPullRequest.count({
-        where: { mergedAt: { not: null }, repository: { userId } },
-      }),
-    ]);
+  const [
+    commitCount,
+    issueCloseCount,
+    prOpenCount,
+    prMergeCount,
+    studyMinutesAgg,
+    qualificationsPassedCount,
+    missionsClaimedTotal,
+  ] = await Promise.all([
+    prisma.githubCommit.count({
+      where: { repository: { userId } },
+    }),
+    prisma.githubIssue.count({
+      where: { state: "closed", repository: { userId } },
+    }),
+    prisma.githubPullRequest.count({
+      where: { repository: { userId } },
+    }),
+    prisma.githubPullRequest.count({
+      where: { mergedAt: { not: null }, repository: { userId } },
+    }),
+    prisma.studyLog.aggregate({
+      where: { player: { userId } },
+      _sum: { minutes: true },
+    }),
+    prisma.playerQualification.count({
+      where: { player: { userId }, status: "passed" },
+    }),
+    prisma.playerMissionProgress.count({
+      where: { player: { userId }, claimedAt: { not: null } },
+    }),
+  ]);
 
-  return { commitCount, issueCloseCount, prOpenCount, prMergeCount, level };
+  return {
+    commitCount,
+    issueCloseCount,
+    prOpenCount,
+    prMergeCount,
+    studyMinutesTotal: studyMinutesAgg._sum.minutes ?? 0,
+    qualificationsPassedCount,
+    missionsClaimedTotal,
+    level,
+  };
 }
 
 export type PeriodMetric =

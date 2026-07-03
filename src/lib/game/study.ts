@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { recalcLevel } from "@/lib/game/exp";
-import { unlockBuildings } from "@/lib/game/buildings";
+import { updateVillageBuildings, formatBuildingUpdate } from "@/lib/game/buildings";
 import { unlockAchievements } from "@/lib/game/achievements";
 import { unlockTitles } from "@/lib/game/titles";
 
@@ -20,6 +20,7 @@ export type RecordStudyLogResult = {
   expGained: number;
   newLevel: number;
   unlockedBuildings: string[];
+  leveledUpBuildings: string[];
   unlockedAchievements: string[];
   unlockedTitles: string[];
 };
@@ -61,9 +62,11 @@ export async function recordStudyLog(
     await prisma.player.update({ where: { userId }, data: { level } });
   }
 
-  const unlockedBuildings = updatedPlayer.village
-    ? await unlockBuildings(userId, updatedPlayer.village.id, level)
-    : [];
+  const buildingResult = updatedPlayer.village
+    ? await updateVillageBuildings(userId, updatedPlayer.village.id, level)
+    : { newlyUnlocked: [], leveledUp: [] };
+  const { unlockedBuildings, leveledUpBuildings } =
+    formatBuildingUpdate(buildingResult);
   const unlockedAchievements = await unlockAchievements(userId, false);
   const unlockedTitles = await unlockTitles(player.id, level);
 
@@ -71,6 +74,7 @@ export async function recordStudyLog(
     expGained,
     newLevel: level,
     unlockedBuildings,
+    leveledUpBuildings,
     unlockedAchievements,
     unlockedTitles,
   };

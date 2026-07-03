@@ -180,12 +180,13 @@ model Village {
 }
 
 model BuildingMaster {
-  id              String @id @default(cuid())
-  type            String @unique
-  name            String
-  description     String
-  unlockCondition Json
-  sortOrder       Int    @default(0)
+  id          String @id @default(cuid())
+  type        String @unique
+  name        String
+  description String
+  metric      String // 建物の成長に使う指標(ActivityMetricsのキー)
+  thresholds  Json // レベルごとの閾値の配列。例: [1,5,15,30,50] で最大Lv5
+  sortOrder   Int    @default(0)
 
   buildings VillageBuilding[]
 }
@@ -203,6 +204,7 @@ model VillageBuilding {
   village          Village  @relation(fields: [villageId], references: [id], onDelete: Cascade)
   buildingMasterId String
   buildingMaster   BuildingMaster @relation(fields: [buildingMasterId], references: [id])
+  level            Int      @default(1)
   unlockedAt       DateTime @default(now())
 
   @@unique([villageId, buildingMasterId])

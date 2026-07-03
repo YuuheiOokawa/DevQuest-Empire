@@ -1,71 +1,104 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { computeActivityMetrics } from "@/lib/game/metrics";
+import { computeActivityMetrics, type ActivityMetrics } from "@/lib/game/metrics";
 
-// 根拠: 18_Phase3_Detailed_Design.md Part2
+// 根拠: 18_Phase3_Detailed_Design.md Part2 を拡張し、建物ごとに
+// レベル制(Lv1〜thresholds.length)を導入する(Phase5)。
 
-const unlockConditionSchema = z.object({
-  metric: z.enum([
-    "commitCount",
-    "issueCloseCount",
-    "prOpenCount",
-    "prMergeCount",
-    "level",
-  ]),
-  operator: z.literal(">="),
-  value: z.number(),
-});
+const thresholdsSchema = z.array(z.number()).min(1);
+
+function computeLevelForMetric(metricValue: number, thresholds: number[]): number {
+  let level = 0;
+  for (const threshold of thresholds) {
+    if (metricValue >= threshold) level += 1;
+    else break;
+  }
+  return level;
+}
+
+export type BuildingUpdateResult = {
+  newlyUnlocked: string[];
+  leveledUp: { name: string; level: number }[];
+};
 
 /**
- * 未アンロックの建物を判定し、条件を満たしたものをアンロックする。
- * 戻り値は新たにアンロックされた建物名の一覧。
+ * 建物のレベルを最新の活動量に合わせて更新する。
+ * 新規アンロック(Lv0→Lv1以上)とレベルアップ(既存Lvの上昇)を区別して返す。
  */
-export async function unlockBuildings(
+export async function updateVillageBuildings(
   userId: string,
   villageId: string,
   level: number
-): Promise<string[]> {
+): Promise<BuildingUpdateResult> {
   const metrics = await computeActivityMetrics(userId, level);
 
-  const [allBuildings, existingUnlocks] = await Promise.all([
+  const [allBuildings, existingRows] = await Promise.all([
     prisma.buildingMaster.findMany(),
-    prisma.villageBuilding.findMany({
-      where: { villageId },
-      select: { buildingMasterId: true },
-    }),
+    prisma.villageBuilding.findMany({ where: { villageId } }),
   ]);
-  const unlockedIds = new Set(existingUnlocks.map((u) => u.buildingMasterId));
+  const existingMap = new Map(existingRows.map((r) => [r.buildingMasterId, r]));
 
   const newlyUnlocked: string[] = [];
+  const leveledUp: { name: string; level: number }[] = [];
 
   for (const building of allBuildings) {
-    if (unlockedIds.has(building.id)) continue;
+    const thresholds = thresholdsSchema.safeParse(building.thresholds);
+    if (!thresholds.success || !building.metric) continue;
 
-    const condition = unlockConditionSchema.safeParse(building.unlockCondition);
-    if (!condition.success) continue;
+    const metricValue = metrics[building.metric as keyof ActivityMetrics];
+    if (typeof metricValue !== "number") continue;
 
-    const metricValue = metrics[condition.data.metric];
-    if (metricValue >= condition.data.value) {
+    const targetLevel = computeLevelForMetric(metricValue, thresholds.data);
+    if (targetLevel === 0) continue;
+
+    const existing = existingMap.get(building.id);
+    if (!existing) {
       await prisma.villageBuilding.create({
-        data: { villageId, buildingMasterId: building.id },
+        data: { villageId, buildingMasterId: building.id, level: targetLevel },
       });
       newlyUnlocked.push(building.name);
+      if (targetLevel > 1) {
+        leveledUp.push({ name: building.name, level: targetLevel });
+      }
+    } else if (targetLevel > existing.level) {
+      await prisma.villageBuilding.update({
+        where: { id: existing.id },
+        data: { level: targetLevel },
+      });
+      leveledUp.push({ name: building.name, level: targetLevel });
     }
   }
 
-  return newlyUnlocked;
+  return { newlyUnlocked, leveledUp };
+}
+
+/** 呼び出し元での通知表示用に、建物更新結果を文字列配列へ整形する */
+export function formatBuildingUpdate(result: BuildingUpdateResult): {
+  unlockedBuildings: string[];
+  leveledUpBuildings: string[];
+} {
+  return {
+    unlockedBuildings: result.newlyUnlocked,
+    leveledUpBuildings: result.leveledUp.map(
+      (b) => `${b.name} → Lv.${b.level}`
+    ),
+  };
 }
 
 export type VillageBuildingView = {
   type: string;
   name: string;
   description: string;
+  level: number;
+  maxLevel: number;
   unlocked: boolean;
   unlockedAt: Date | null;
+  currentMetricValue: number;
+  nextThreshold: number | null;
 };
 
 /**
- * 村画面/API用に、全建物マスタと自分の村のアンロック状況をマージして返す。
+ * 村画面/API用に、全建物マスタと自分の村のレベル状況をマージして返す。
  */
 export async function getVillageBuildingsView(
   userId: string
@@ -77,19 +110,63 @@ export async function getVillageBuildingsView(
 
   if (!player?.village) return null;
 
-  const unlockedMap = new Map(
-    player.village.buildings.map((b) => [b.buildingMasterId, b.unlockedAt])
+  const metrics = await computeActivityMetrics(userId, player.level);
+  const existingMap = new Map(
+    player.village.buildings.map((b) => [b.buildingMasterId, b])
   );
 
   const allBuildings = await prisma.buildingMaster.findMany({
     orderBy: { sortOrder: "asc" },
   });
 
-  return allBuildings.map((building) => ({
+  return allBuildings.map((building) => {
+    const thresholds = thresholdsSchema.safeParse(building.thresholds);
+    const thresholdArr = thresholds.success ? thresholds.data : [];
+    const metricValue = building.metric
+      ? ((metrics[building.metric as keyof ActivityMetrics] as number) ?? 0)
+      : 0;
+    const existing = existingMap.get(building.id);
+    const level = existing?.level ?? 0;
+    const maxLevel = thresholdArr.length;
+
+    return {
       type: building.type,
       name: building.name,
       description: building.description,
-      unlocked: unlockedMap.has(building.id),
-      unlockedAt: unlockedMap.get(building.id) ?? null,
-    }));
+      level,
+      maxLevel,
+      unlocked: !!existing,
+      unlockedAt: existing?.unlockedAt ?? null,
+      currentMetricValue: metricValue,
+      nextThreshold: level < maxLevel ? thresholdArr[level] : null,
+    };
+  });
+}
+
+export type VillageRank = "S" | "A" | "B" | "C" | "D" | "E";
+
+export type VillageScoreView = {
+  totalLevel: number;
+  maxTotalLevel: number;
+  rank: VillageRank;
+};
+
+function rankFromScore(rate: number): VillageRank {
+  if (rate >= 1) return "S";
+  if (rate >= 0.8) return "A";
+  if (rate >= 0.6) return "B";
+  if (rate >= 0.4) return "C";
+  if (rate >= 0.2) return "D";
+  return "E";
+}
+
+/** 村の発展度スコア(全建物のレベル合計)とランクを算出する */
+export function getVillageScore(
+  buildings: VillageBuildingView[]
+): VillageScoreView {
+  const totalLevel = buildings.reduce((sum, b) => sum + b.level, 0);
+  const maxTotalLevel = buildings.reduce((sum, b) => sum + b.maxLevel, 0);
+  const rate = maxTotalLevel > 0 ? totalLevel / maxTotalLevel : 0;
+
+  return { totalLevel, maxTotalLevel, rank: rankFromScore(rate) };
 }

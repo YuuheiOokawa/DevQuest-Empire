@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { formatGrowthNotifications } from "@/lib/game/notifications";
 
 export type MissionItem = {
   id: string;
@@ -30,6 +31,9 @@ export function MissionList({
   const [missions, setMissions] = useState(initialMissions);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<Record<string, string[]>>(
+    {}
+  );
 
   async function handleClaim(missionId: string) {
     setPendingId(missionId);
@@ -38,6 +42,7 @@ export function MissionList({
       const res = await fetch(`/api/missions/${missionId}/claim`, {
         method: "POST",
       });
+      const result = await res.json();
       if (!res.ok) {
         setError("受け取りに失敗しました。時間をおいて再度お試しください。");
         return;
@@ -45,6 +50,10 @@ export function MissionList({
       setMissions((prev) =>
         prev.map((m) => (m.id === missionId ? { ...m, claimed: true, claimable: false } : m))
       );
+      setNotifications((prev) => ({
+        ...prev,
+        [missionId]: formatGrowthNotifications(result),
+      }));
       router.refresh();
     } finally {
       setPendingId(null);
@@ -91,6 +100,11 @@ export function MissionList({
                   </Button>
                 ) : null}
               </div>
+              {notifications[mission.id]?.map((line) => (
+                <p key={line} className="text-primary text-xs font-medium">
+                  {line}
+                </p>
+              ))}
             </CardContent>
           </Card>
         ))}

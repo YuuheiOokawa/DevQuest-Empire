@@ -14,7 +14,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { recalcLevel } from "@/lib/game/exp";
 import { getActivitySummary } from "@/lib/game/activity";
-import { getVillageBuildingsView } from "@/lib/game/buildings";
+import { getVillageBuildingsView, getVillageScore } from "@/lib/game/buildings";
+import { getCompanyRank } from "@/lib/game/company";
 import { getAchievementsView } from "@/lib/game/achievements";
 import { getOrCreateTodaysQuest } from "@/lib/game/quest";
 import { getLoginBonusStatus } from "@/lib/game/loginBonus";
@@ -62,7 +63,6 @@ export default async function DashboardPage() {
     getQualificationsView(userId),
   ]);
 
-  const unlockedBuildingCount = buildings?.filter((b) => b.unlocked).length ?? 0;
   const unlockedAchievementCount =
     achievements?.filter((a) => a.unlocked).length ?? 0;
   const unlockedTitleCount = titles?.filter((t) => t.unlocked).length ?? 0;
@@ -70,6 +70,8 @@ export default async function DashboardPage() {
     missions?.filter((m) => m.claimable).length ?? 0;
   const passedQualificationCount =
     qualifications?.filter((q) => q.status === "passed").length ?? 0;
+  const villageScore = buildings ? getVillageScore(buildings) : null;
+  const companyRank = getCompanyRank(level);
 
   return (
     <>
@@ -83,7 +85,9 @@ export default async function DashboardPage() {
               </p>
             )}
             <h1 className="truncate text-2xl font-bold">{player.name}</h1>
-            <p className="text-muted-foreground text-sm">Lv.{level}</p>
+            <p className="text-muted-foreground text-sm">
+              Lv.{level} ・ {companyRank.rank}
+            </p>
           </div>
           <SyncButton />
         </div>
@@ -160,7 +164,9 @@ export default async function DashboardPage() {
                   村
                 </h2>
                 <p className="text-muted-foreground text-sm">
-                  {unlockedBuildingCount} / {buildings?.length ?? 0} 建物
+                  {villageScore
+                    ? `ランク${villageScore.rank} (${villageScore.totalLevel}/${villageScore.maxTotalLevel})`
+                    : "-"}
                 </p>
               </CardContent>
             </Card>
