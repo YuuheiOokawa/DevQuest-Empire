@@ -1,0 +1,112 @@
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { recalcLevel } from "@/lib/game/exp";
+import { getActivitySummary } from "@/lib/game/activity";
+import { getVillageBuildingsView } from "@/lib/game/buildings";
+import { getAchievementsView } from "@/lib/game/achievements";
+import { getOrCreateTodaysQuest } from "@/lib/game/quest";
+import { AppNav } from "@/components/layout/AppNav";
+import { SyncButton } from "@/components/github/SyncButton";
+import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+
+export default async function DashboardPage() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect("/login");
+  }
+  const userId = session.user.id;
+
+  const player = await prisma.player.findUnique({ where: { userId } });
+  if (!player) {
+    redirect("/login");
+  }
+
+  const { level, currentExp, expToNextLevel } = recalcLevel(player.exp);
+
+  const [activity, buildings, achievements, todaysQuest] = await Promise.all([
+    getActivitySummary(userId),
+    getVillageBuildingsView(userId),
+    getAchievementsView(userId),
+    getOrCreateTodaysQuest(userId),
+  ]);
+
+  const unlockedBuildingCount = buildings?.filter((b) => b.unlocked).length ?? 0;
+  const unlockedAchievementCount =
+    achievements?.filter((a) => a.unlocked).length ?? 0;
+
+  return (
+    <>
+      <AppNav />
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">{player.name}</h1>
+            <p className="text-muted-foreground text-sm">Lv.{level}</p>
+          </div>
+          <SyncButton />
+        </div>
+
+        <div className="space-y-1">
+          <Progress value={(currentExp / expToNextLevel) * 100} />
+          <p className="text-muted-foreground text-right text-xs">
+            {currentExp} / {expToNextLevel} EXP
+          </p>
+        </div>
+
+        <Card>
+          <CardContent className="flex flex-col gap-2 py-4">
+            <h2 className="font-semibold">直近7日間の活動</h2>
+            <div className="text-muted-foreground flex gap-4 text-sm">
+              <span>Commit {activity.last7Days.commits}</span>
+              <span>Issue Close {activity.last7Days.issues}</span>
+              <span>PR Merge {activity.last7Days.prs}</span>
+            </div>
+            <p className="text-sm">{activity.aiComment}</p>
+          </CardContent>
+        </Card>
+
+        <Link href="/quest">
+          <Card className="hover:bg-accent transition-colors">
+            <CardContent className="flex items-center justify-between gap-4 py-4">
+              <div>
+                <h2 className="font-semibold">今日のクエスト</h2>
+                <p className="text-muted-foreground text-sm">
+                  {todaysQuest.title}
+                </p>
+              </div>
+              <span className="text-muted-foreground shrink-0 text-sm">
+                {todaysQuest.status === "completed" ? "達成済み" : "未達成"}
+              </span>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Link href="/village">
+            <Card className="hover:bg-accent transition-colors">
+              <CardContent className="py-4">
+                <h2 className="font-semibold">村</h2>
+                <p className="text-muted-foreground text-sm">
+                  {unlockedBuildingCount} / {buildings?.length ?? 0} 建物
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/achievements">
+            <Card className="hover:bg-accent transition-colors">
+              <CardContent className="py-4">
+                <h2 className="font-semibold">実績</h2>
+                <p className="text-muted-foreground text-sm">
+                  {unlockedAchievementCount} / {achievements?.length ?? 0} 達成
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+      </main>
+    </>
+  );
+}
