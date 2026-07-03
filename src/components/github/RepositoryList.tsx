@@ -82,10 +82,10 @@ export function RepositoryList({
         <Card key={repo.id}>
           <CardContent className="flex flex-col gap-3 py-4">
             <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{repo.fullName}</span>
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="truncate font-medium">{repo.fullName}</span>
                 {repo.isPrivate && (
-                  <Badge variant="secondary">Private</Badge>
+                  <Badge variant="secondary" className="shrink-0">Private</Badge>
                 )}
               </div>
               <Switch
