@@ -15,6 +15,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "DevQuest Empire",
   description: "GitHubの草を、育てる。",
+  appleWebApp: {
+    title: "DevQuest Empire",
+    statusBarStyle: "default",
+  },
 };
 
 export default function RootLayout({

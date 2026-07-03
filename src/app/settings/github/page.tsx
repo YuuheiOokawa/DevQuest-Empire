@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { GitBranch } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { getRepositoriesForUser, describeGithubError } from "@/lib/github";
 import { RepositoryList } from "@/components/github/RepositoryList";
@@ -23,7 +24,10 @@ export default async function GithubSettingsPage() {
       <AppNav />
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-10">
       <div className="space-y-1">
-        <h1 className="text-2xl font-bold">GitHub連携設定</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-bold">
+          <GitBranch className="text-primary size-6" />
+          GitHub連携設定
+        </h1>
         <p className="text-muted-foreground text-sm">
           同期対象にするリポジトリを選択してください。
         </p>

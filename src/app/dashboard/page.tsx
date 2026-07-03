@@ -1,5 +1,15 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import {
+  TrendingUp,
+  Scroll,
+  Target,
+  Castle,
+  Trophy,
+  Award,
+  BookOpen,
+  GraduationCap,
+} from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { recalcLevel } from "@/lib/game/exp";
@@ -93,7 +103,10 @@ export default async function DashboardPage() {
 
         <Card>
           <CardContent className="flex flex-col gap-2 py-4">
-            <h2 className="font-semibold">直近7日間の活動</h2>
+            <h2 className="flex items-center gap-1.5 font-semibold">
+              <TrendingUp className="text-primary size-4" />
+              直近7日間の活動
+            </h2>
             <div className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-sm">
               <span>Commit {activity.last7Days.commits}</span>
               <span>Issue Close {activity.last7Days.issues}</span>
@@ -107,7 +120,10 @@ export default async function DashboardPage() {
           <Card className="hover:bg-accent transition-colors">
             <CardContent className="flex items-center justify-between gap-4 py-4">
               <div className="min-w-0">
-                <h2 className="font-semibold">今日のクエスト</h2>
+                <h2 className="flex items-center gap-1.5 font-semibold">
+                  <Scroll className="text-primary size-4 shrink-0" />
+                  今日のクエスト
+                </h2>
                 <p className="text-muted-foreground truncate text-sm">
                   {todaysQuest.title}
                 </p>
@@ -122,7 +138,10 @@ export default async function DashboardPage() {
         <Link href="/missions">
           <Card className="hover:bg-accent transition-colors">
             <CardContent className="flex items-center justify-between gap-4 py-4">
-              <h2 className="font-semibold">ミッション</h2>
+              <h2 className="flex items-center gap-1.5 font-semibold">
+                <Target className="text-primary size-4" />
+                ミッション
+              </h2>
               <span className="text-muted-foreground shrink-0 text-sm">
                 {claimableMissionCount > 0
                   ? `受け取り可能: ${claimableMissionCount}件`
@@ -136,7 +155,10 @@ export default async function DashboardPage() {
           <Link href="/village">
             <Card className="hover:bg-accent transition-colors">
               <CardContent className="py-4">
-                <h2 className="font-semibold">村</h2>
+                <h2 className="flex items-center gap-1.5 font-semibold">
+                  <Castle className="text-primary size-4" />
+                  村
+                </h2>
                 <p className="text-muted-foreground text-sm">
                   {unlockedBuildingCount} / {buildings?.length ?? 0} 建物
                 </p>
@@ -146,7 +168,10 @@ export default async function DashboardPage() {
           <Link href="/achievements">
             <Card className="hover:bg-accent transition-colors">
               <CardContent className="py-4">
-                <h2 className="font-semibold">実績</h2>
+                <h2 className="flex items-center gap-1.5 font-semibold">
+                  <Trophy className="text-primary size-4" />
+                  実績
+                </h2>
                 <p className="text-muted-foreground text-sm">
                   {unlockedAchievementCount} / {achievements?.length ?? 0} 達成
                 </p>
@@ -156,7 +181,10 @@ export default async function DashboardPage() {
           <Link href="/titles">
             <Card className="hover:bg-accent transition-colors">
               <CardContent className="py-4">
-                <h2 className="font-semibold">称号</h2>
+                <h2 className="flex items-center gap-1.5 font-semibold">
+                  <Award className="text-primary size-4" />
+                  称号
+                </h2>
                 <p className="text-muted-foreground text-sm">
                   {unlockedTitleCount} / {titles?.length ?? 0} 解放
                 </p>
@@ -166,7 +194,10 @@ export default async function DashboardPage() {
           <Link href="/study">
             <Card className="hover:bg-accent transition-colors">
               <CardContent className="py-4">
-                <h2 className="font-semibold">学習</h2>
+                <h2 className="flex items-center gap-1.5 font-semibold">
+                  <BookOpen className="text-primary size-4" />
+                  学習
+                </h2>
                 <p className="text-muted-foreground text-sm">
                   累計{studySummary?.totalMinutes ?? 0}分
                 </p>
@@ -176,7 +207,10 @@ export default async function DashboardPage() {
           <Link href="/qualifications">
             <Card className="hover:bg-accent transition-colors">
               <CardContent className="py-4">
-                <h2 className="font-semibold">資格</h2>
+                <h2 className="flex items-center gap-1.5 font-semibold">
+                  <GraduationCap className="text-primary size-4" />
+                  資格
+                </h2>
                 <p className="text-muted-foreground text-sm">
                   {passedQualificationCount} / {qualifications?.length ?? 0} 合格
                 </p>
