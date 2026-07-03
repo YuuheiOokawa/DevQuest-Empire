@@ -1,4 +1,7 @@
-import { TIER_PALETTE_3D, type Palette3D } from "./palette3d";
+import { useRef, useState } from "react";
+import { useFrame, type ThreeEvent } from "@react-three/fiber";
+import type { Group, Mesh, MeshStandardMaterial } from "three";
+import { getTierWorldConfig, type Palette3D } from "./tierWorldConfig";
 
 type Archetype =
   | "house"
@@ -56,7 +59,70 @@ export const BUILDING_CONFIG_3D: Record<string, BuildingConfig> = {
   throne_room: { archetype: "castle", scale: 1.3, crown: true },
 };
 
-function House({ p, opts }: { p: Palette3D; opts: BuildingConfig }) {
+// 旗竿の先端に取り付ける、風にはためくアニメーション付きの小さな旗。
+function Flag({ color, position }: { color: string; position: [number, number, number] }) {
+  const ref = useRef<Mesh>(null);
+  const [phase] = useState(() => Math.random() * Math.PI * 2);
+  useFrame(({ clock }) => {
+    if (ref.current) {
+      ref.current.rotation.z = Math.sin(clock.elapsedTime * 2.6 + phase) * 0.35;
+    }
+  });
+  return (
+    <mesh ref={ref} position={position}>
+      <boxGeometry args={[0.18, 0.1, 0.01]} />
+      <meshStandardMaterial color={color} />
+    </mesh>
+  );
+}
+
+// 煙突からゆっくり立ち上りフェードアウトする煙(3個を使い回すループ)。
+function SmokePuff({ offset }: { offset: number }) {
+  const ref = useRef<Mesh>(null);
+  useFrame(({ clock }) => {
+    if (!ref.current) return;
+    const t = (clock.elapsedTime + offset) % 1.8;
+    ref.current.position.y = t * 0.5;
+    ref.current.position.x = Math.sin((clock.elapsedTime + offset) * 2) * 0.05;
+    const material = ref.current.material as MeshStandardMaterial;
+    material.opacity = Math.max(0, 0.5 - t * 0.28);
+    const s = 0.05 + t * 0.05;
+    ref.current.scale.setScalar(s);
+  });
+  return (
+    <mesh ref={ref}>
+      <sphereGeometry args={[1, 6, 6]} />
+      <meshStandardMaterial color="#e5e7eb" transparent opacity={0.5} />
+    </mesh>
+  );
+}
+
+function Smoke({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      {[0, 0.6, 1.2].map((offset) => (
+        <SmokePuff key={offset} offset={offset} />
+      ))}
+    </group>
+  );
+}
+
+// 建物が初めてマウントされた時に、小さくポンと現れるポップインアニメーション。
+function PopIn({ children }: { children: React.ReactNode }) {
+  const ref = useRef<Group>(null);
+  const born = useRef(0);
+  useFrame(({ clock }) => {
+    if (born.current === 0) born.current = clock.elapsedTime;
+    if (ref.current) {
+      const t = Math.min(1, (clock.elapsedTime - born.current) / 0.4);
+      const eased = 1 - Math.pow(1 - t, 3);
+      ref.current.scale.setScalar(Math.max(0.001, eased));
+    }
+  });
+  return <group ref={ref}>{children}</group>;
+}
+
+function House({ p, opts, effects }: { p: Palette3D; opts: BuildingConfig; effects: { smoke: boolean } }) {
   const w = opts.wide ? 1.5 : 1.1;
   return (
     <group>
@@ -78,6 +144,7 @@ function House({ p, opts }: { p: Palette3D; opts: BuildingConfig }) {
             <boxGeometry args={[0.1, 0.28, 0.1]} />
             <meshStandardMaterial color={p.trim} />
           </mesh>
+          {effects.smoke && <Smoke position={[w * 0.32, 1.1, 0.15]} />}
         </>
       )}
     </group>
@@ -105,7 +172,7 @@ function HouseGrand({ p }: { p: Palette3D }) {
   );
 }
 
-function Tower({ p, opts }: { p: Palette3D; opts: BuildingConfig }) {
+function Tower({ p, opts, effects }: { p: Palette3D; opts: BuildingConfig; effects: { flags: boolean } }) {
   return (
     <group>
       <mesh position={[0, 0.6, 0]} castShadow receiveShadow>
@@ -129,10 +196,14 @@ function Tower({ p, opts }: { p: Palette3D; opts: BuildingConfig }) {
             <cylinderGeometry args={[0.015, 0.015, 0.3, 4]} />
             <meshStandardMaterial color={p.trim} />
           </mesh>
-          <mesh position={[0.09, 1.85, 0]}>
-            <boxGeometry args={[0.18, 0.1, 0.01]} />
-            <meshStandardMaterial color={p.accent} />
-          </mesh>
+          {effects.flags ? (
+            <Flag color={p.accent} position={[0.09, 1.85, 0]} />
+          ) : (
+            <mesh position={[0.09, 1.85, 0]}>
+              <boxGeometry args={[0.18, 0.1, 0.01]} />
+              <meshStandardMaterial color={p.accent} />
+            </mesh>
+          )}
         </>
       )}
     </group>
@@ -170,7 +241,7 @@ function Church({ p }: { p: Palette3D }) {
   );
 }
 
-function Castle({ p, opts }: { p: Palette3D; opts: BuildingConfig }) {
+function Castle({ p, opts, effects }: { p: Palette3D; opts: BuildingConfig; effects: { flags: boolean } }) {
   return (
     <group>
       <mesh position={[0, 0.5, 0]} castShadow receiveShadow>
@@ -211,7 +282,16 @@ function Castle({ p, opts }: { p: Palette3D; opts: BuildingConfig }) {
           <meshStandardMaterial color={p.accent} emissive={p.accent} emissiveIntensity={0.3} />
         </mesh>
       ) : (
-        opts.flag && (
+        opts.flag &&
+        (effects.flags ? (
+          <>
+            <mesh position={[0, 1.35, 0]}>
+              <cylinderGeometry args={[0.015, 0.015, 0.3, 4]} />
+              <meshStandardMaterial color={p.trim} />
+            </mesh>
+            <Flag color={p.accent} position={[0.09, 1.45, 0]} />
+          </>
+        ) : (
           <>
             <mesh position={[0, 1.35, 0]}>
               <cylinderGeometry args={[0.015, 0.015, 0.3, 4]} />
@@ -222,7 +302,7 @@ function Castle({ p, opts }: { p: Palette3D; opts: BuildingConfig }) {
               <meshStandardMaterial color={p.accent} />
             </mesh>
           </>
-        )
+        ))
       )}
     </group>
   );
@@ -349,18 +429,28 @@ function Harbor({ p }: { p: Palette3D }) {
   );
 }
 
-function Archetype({ archetype, p, opts }: { archetype: Archetype; p: Palette3D; opts: BuildingConfig }) {
+function Archetype({
+  archetype,
+  p,
+  opts,
+  effects,
+}: {
+  archetype: Archetype;
+  p: Palette3D;
+  opts: BuildingConfig;
+  effects: { smoke: boolean; flags: boolean };
+}) {
   switch (archetype) {
     case "house":
-      return <House p={p} opts={opts} />;
+      return <House p={p} opts={opts} effects={effects} />;
     case "houseGrand":
       return <HouseGrand p={p} />;
     case "tower":
-      return <Tower p={p} opts={opts} />;
+      return <Tower p={p} opts={opts} effects={effects} />;
     case "church":
       return <Church p={p} />;
     case "castle":
-      return <Castle p={p} opts={opts} />;
+      return <Castle p={p} opts={opts} effects={effects} />;
     case "grandHall":
       return <GrandHall p={p} opts={opts} />;
     case "marketStall":
@@ -374,9 +464,9 @@ function Archetype({ archetype, p, opts }: { archetype: Archetype; p: Palette3D;
   }
 }
 
-function ConstructionLot({ scale }: { scale: number }) {
+function ConstructionLot() {
   return (
-    <group scale={scale}>
+    <group>
       <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[1.1, 1.1]} />
         <meshStandardMaterial color="#8a6d4a" transparent opacity={0.4} />
@@ -400,6 +490,7 @@ export function Building3D({
   unlocked,
   position,
   rotationY,
+  onSelect,
 }: {
   type: string;
   requiredTier: number;
@@ -407,20 +498,43 @@ export function Building3D({
   unlocked: boolean;
   position: [number, number];
   rotationY: number;
+  onSelect?: (type: string) => void;
 }) {
   const config = BUILDING_CONFIG_3D[type] ?? { archetype: "house" };
-  const palette = TIER_PALETTE_3D[requiredTier] ?? TIER_PALETTE_3D[1];
+  const world = getTierWorldConfig(requiredTier);
   const baseScale = config.scale ?? 1;
   const levelBoost = unlocked ? Math.min(1.25, 1 + level * 0.05) : 1;
   const scale = baseScale * levelBoost;
 
+  const handlePointerOver = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    document.body.style.cursor = "pointer";
+  };
+  const handlePointerOut = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    document.body.style.cursor = "auto";
+  };
+  const handleClick = (e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation();
+    onSelect?.(type);
+  };
+
   return (
-    <group position={[position[0], 0, position[1]]} rotation={[0, rotationY, 0]} scale={scale}>
-      {unlocked ? (
-        <Archetype archetype={config.archetype} p={palette} opts={config} />
-      ) : (
-        <ConstructionLot scale={1} />
-      )}
+    <group
+      position={[position[0], 0, position[1]]}
+      rotation={[0, rotationY, 0]}
+      scale={scale}
+      onClick={handleClick}
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
+    >
+      <PopIn>
+        {unlocked ? (
+          <Archetype archetype={config.archetype} p={world.palette} opts={config} effects={world.effects} />
+        ) : (
+          <ConstructionLot />
+        )}
+      </PopIn>
     </group>
   );
 }

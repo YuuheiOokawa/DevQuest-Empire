@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Lock, Sparkles } from "lucide-react";
+import { Lock, Sparkles, Crown } from "lucide-react";
 import { auth } from "@/lib/auth";
 import {
   getVillageBuildingsView,
@@ -24,7 +24,7 @@ const TIER_ACCENT_BORDER: Record<number, string> = {
   1: "border-l-4 border-l-emerald-500",
   2: "border-l-4 border-l-sky-500",
   3: "border-l-4 border-l-violet-500",
-  4: "border-l-4 border-l-fuchsia-500",
+  4: "border-l-4 border-l-rose-500",
   5: "border-l-4 border-l-amber-500",
   6: "border-l-4 border-l-yellow-400 shadow-md shadow-amber-500/20",
 };
@@ -162,11 +162,12 @@ export default async function VillagePage() {
                                   {building.unlocked ? (
                                     <Badge
                                       className={
-                                        isMaxed && tier >= 4
-                                          ? "shrink-0 bg-gradient-to-r from-amber-400 to-yellow-500 text-white shadow shadow-amber-500/40"
+                                        isMaxed
+                                          ? "shrink-0 gap-1 bg-gradient-to-r from-amber-400 to-yellow-500 text-white shadow shadow-amber-500/40"
                                           : "shrink-0"
                                       }
                                     >
+                                      {isMaxed && <Crown className="size-3" />}
                                       {isMaxed
                                         ? "MAX"
                                         : `Lv.${building.level}/${building.maxLevel}`}

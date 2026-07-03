@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import type { VillageBuildingView } from "@/lib/game/buildings";
+import { BuildingDetailPopup } from "@/components/village/BuildingDetailPopup";
 import { Building3D } from "./town3d/Building3D";
 import { Ground, River, CityWall, Fountain, ForestRing } from "./town3d/Scenery3D";
 import { layoutBuildings, outerRadiusForTier } from "./town3d/layout";
@@ -131,6 +133,8 @@ export function TownScene3D({
   const light = LIGHT_THEME[tier] ?? LIGHT_THEME[1];
   const placed = layoutBuildings(buildings);
   const radius = outerRadiusForTier(tier);
+  const [selectedType, setSelectedType] = useState<string | null>(null);
+  const selectedBuilding = buildings.find((b) => b.type === selectedType) ?? null;
 
   return (
     <div
@@ -160,7 +164,7 @@ export function TownScene3D({
         <Ground tier={tier} radius={radius + 2} />
         <River tier={tier} radius={radius} />
         <CityWall tier={tier} radius={radius} />
-        <ForestRing radius={radius} />
+        <ForestRing tier={tier} radius={radius} />
         <Fountain tier={tier} />
         {placed.map((b) => (
           <Building3D
@@ -171,6 +175,7 @@ export function TownScene3D({
             unlocked={b.unlocked}
             position={b.position}
             rotationY={b.rotationY}
+            onSelect={setSelectedType}
           />
         ))}
         <OrbitControls
@@ -182,6 +187,9 @@ export function TownScene3D({
           enablePan={false}
         />
       </Canvas>
+      {selectedBuilding && (
+        <BuildingDetailPopup building={selectedBuilding} onClose={() => setSelectedType(null)} />
+      )}
     </div>
   );
 }
