@@ -8,6 +8,7 @@ import {
 } from "@/lib/game/buildings";
 import { AppNav } from "@/components/layout/AppNav";
 import { BuildingIcon } from "@/components/village/BuildingIcon";
+import { TownScene } from "@/components/village/TownScene";
 import {
   SettlementBadge,
   TIER_PAGE_BACKGROUND,
@@ -17,6 +18,16 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 
 const TIER_NAMES = ["村", "町", "大きな町", "帝国", "王国", "国"];
+
+// カードの左端の色をティアごとに変え、施設が発展するほど豪華な色味になるようにする。
+const TIER_ACCENT_BORDER: Record<number, string> = {
+  1: "border-l-4 border-l-emerald-500",
+  2: "border-l-4 border-l-sky-500",
+  3: "border-l-4 border-l-violet-500",
+  4: "border-l-4 border-l-fuchsia-500",
+  5: "border-l-4 border-l-amber-500",
+  6: "border-l-4 border-l-yellow-400 shadow-md shadow-amber-500/20",
+};
 
 export default async function VillagePage() {
   const session = await auth();
@@ -64,6 +75,8 @@ export default async function VillagePage() {
             </p>
           ) : (
             <>
+              <TownScene tier={settlement.tier} buildings={buildings} />
+
               <Card>
                 <CardContent className="flex items-center gap-4 py-4">
                   <SettlementBadge tier={settlement.tier} size="lg" />
@@ -130,7 +143,11 @@ export default async function VillagePage() {
                         return (
                           <Card
                             key={building.type}
-                            className={building.unlocked ? "" : "opacity-60"}
+                            className={
+                              building.unlocked
+                                ? `${TIER_ACCENT_BORDER[tier] ?? ""} transition-transform hover:-translate-y-0.5`
+                                : "opacity-60"
+                            }
                           >
                             <CardContent className="flex items-start gap-3 py-4">
                               <BuildingIcon
@@ -143,7 +160,13 @@ export default async function VillagePage() {
                                     {building.name}
                                   </span>
                                   {building.unlocked ? (
-                                    <Badge className="shrink-0">
+                                    <Badge
+                                      className={
+                                        isMaxed && tier >= 4
+                                          ? "shrink-0 bg-gradient-to-r from-amber-400 to-yellow-500 text-white shadow shadow-amber-500/40"
+                                          : "shrink-0"
+                                      }
+                                    >
                                       {isMaxed
                                         ? "MAX"
                                         : `Lv.${building.level}/${building.maxLevel}`}
