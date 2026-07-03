@@ -129,6 +129,63 @@ const titleMasters = [
   },
 ];
 
+const missionMasters = [
+  {
+    type: "daily_commit_2",
+    name: "今日はコミットを2回",
+    description: "今日中に2回コミットしましょう。",
+    period: "daily",
+    metric: "commitCount",
+    targetValue: 2,
+    expReward: 15,
+  },
+  {
+    type: "daily_issue_close_1",
+    name: "今日はIssueを1件クローズ",
+    description: "今日中にIssueを1件クローズしましょう。",
+    period: "daily",
+    metric: "issueCloseCount",
+    targetValue: 1,
+    expReward: 20,
+  },
+  {
+    type: "daily_pr_open_1",
+    name: "今日はPRを1件作成",
+    description: "今日中にPull Requestを1件作成しましょう。",
+    period: "daily",
+    metric: "prOpenCount",
+    targetValue: 1,
+    expReward: 15,
+  },
+  {
+    type: "weekly_commit_10",
+    name: "今週はコミットを10回",
+    description: "今週中に合計10回コミットしましょう。",
+    period: "weekly",
+    metric: "commitCount",
+    targetValue: 10,
+    expReward: 50,
+  },
+  {
+    type: "weekly_pr_merge_3",
+    name: "今週はPRを3件マージ",
+    description: "今週中にPull Requestを3件マージしましょう。",
+    period: "weekly",
+    metric: "prMergeCount",
+    targetValue: 3,
+    expReward: 80,
+  },
+  {
+    type: "weekly_issue_close_3",
+    name: "今週はIssueを3件クローズ",
+    description: "今週中にIssueを3件クローズしましょう。",
+    period: "weekly",
+    metric: "issueCloseCount",
+    targetValue: 3,
+    expReward: 60,
+  },
+];
+
 async function main() {
   for (const b of buildingMasters) {
     await prisma.buildingMaster.upsert({
@@ -154,12 +211,20 @@ async function main() {
     });
   }
 
+  for (const m of missionMasters) {
+    await prisma.missionMaster.upsert({
+      where: { type: m.type },
+      update: m,
+      create: m,
+    });
+  }
+
   // FallbackQuestはユニークキーを持たないため、毎回全消し→再投入する
   await prisma.fallbackQuest.deleteMany();
   await prisma.fallbackQuest.createMany({ data: fallbackQuests });
 
   console.log(
-    `Seed完了: BuildingMaster ${buildingMasters.length}件 / AchievementMaster ${achievementMasters.length}件 / TitleMaster ${titleMasters.length}件 / FallbackQuest ${fallbackQuests.length}件`
+    `Seed完了: BuildingMaster ${buildingMasters.length}件 / AchievementMaster ${achievementMasters.length}件 / TitleMaster ${titleMasters.length}件 / MissionMaster ${missionMasters.length}件 / FallbackQuest ${fallbackQuests.length}件`
   );
 }
 

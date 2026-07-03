@@ -9,6 +9,7 @@ import { getAchievementsView } from "@/lib/game/achievements";
 import { getOrCreateTodaysQuest } from "@/lib/game/quest";
 import { getLoginBonusStatus } from "@/lib/game/loginBonus";
 import { getTitlesView, getEquippedTitleName } from "@/lib/game/titles";
+import { getMissionsView } from "@/lib/game/missions";
 import { AppNav } from "@/components/layout/AppNav";
 import { SyncButton } from "@/components/github/SyncButton";
 import { LoginBonusCard } from "@/components/login-bonus/LoginBonusCard";
@@ -25,21 +26,32 @@ export default async function DashboardPage() {
   const player = await prisma.player.findUniqueOrThrow({ where: { userId } });
   const { level, currentExp, expToNextLevel } = recalcLevel(player.exp);
 
-  const [activity, buildings, achievements, todaysQuest, loginBonus, titles, equippedTitle] =
-    await Promise.all([
-      getActivitySummary(userId),
-      getVillageBuildingsView(userId),
-      getAchievementsView(userId),
-      getOrCreateTodaysQuest(userId),
-      getLoginBonusStatus(userId),
-      getTitlesView(userId),
-      getEquippedTitleName(userId),
-    ]);
+  const [
+    activity,
+    buildings,
+    achievements,
+    todaysQuest,
+    loginBonus,
+    titles,
+    equippedTitle,
+    missions,
+  ] = await Promise.all([
+    getActivitySummary(userId),
+    getVillageBuildingsView(userId),
+    getAchievementsView(userId),
+    getOrCreateTodaysQuest(userId),
+    getLoginBonusStatus(userId),
+    getTitlesView(userId),
+    getEquippedTitleName(userId),
+    getMissionsView(userId),
+  ]);
 
   const unlockedBuildingCount = buildings?.filter((b) => b.unlocked).length ?? 0;
   const unlockedAchievementCount =
     achievements?.filter((a) => a.unlocked).length ?? 0;
   const unlockedTitleCount = titles?.filter((t) => t.unlocked).length ?? 0;
+  const claimableMissionCount =
+    missions?.filter((m) => m.claimable).length ?? 0;
 
   return (
     <>
@@ -94,6 +106,19 @@ export default async function DashboardPage() {
               </div>
               <span className="text-muted-foreground shrink-0 text-sm">
                 {todaysQuest.status === "completed" ? "達成済み" : "未達成"}
+              </span>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/missions">
+          <Card className="hover:bg-accent transition-colors">
+            <CardContent className="flex items-center justify-between gap-4 py-4">
+              <h2 className="font-semibold">ミッション</h2>
+              <span className="text-muted-foreground shrink-0 text-sm">
+                {claimableMissionCount > 0
+                  ? `受け取り可能: ${claimableMissionCount}件`
+                  : `全${missions?.length ?? 0}件`}
               </span>
             </CardContent>
           </Card>

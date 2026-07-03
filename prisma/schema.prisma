@@ -86,6 +86,7 @@ model Player {
   achievements     PlayerAchievement[]
   activityComments GithubActivityComment[]
   titles           PlayerTitle[]
+  missionProgress  PlayerMissionProgress[]
 }
 
 model TitleMaster {
@@ -239,6 +240,31 @@ model PlayerAchievement {
   unlockedAt          DateTime @default(now())
 
   @@unique([playerId, achievementMasterId])
+}
+
+model MissionMaster {
+  id          String @id @default(cuid())
+  type        String @unique
+  name        String
+  description String
+  period      String // "daily" | "weekly"
+  metric      String // "commitCount" | "issueCloseCount" | "prOpenCount" | "prMergeCount"
+  targetValue Int
+  expReward   Int
+
+  progress PlayerMissionProgress[]
+}
+
+model PlayerMissionProgress {
+  id              String    @id @default(cuid())
+  playerId        String
+  player          Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  missionMasterId String
+  missionMaster   MissionMaster @relation(fields: [missionMasterId], references: [id])
+  periodKey       String
+  claimedAt       DateTime?
+
+  @@unique([playerId, missionMasterId, periodKey])
 }
 
 model GithubActivityComment {
