@@ -1,4 +1,4 @@
-import { Lock, X } from "lucide-react";
+import { Crown, Lock, Sparkles, X } from "lucide-react";
 import type { VillageBuildingView } from "@/lib/game/buildings";
 import { BuildingIcon } from "@/components/village/BuildingIcon";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +13,15 @@ const TIER_TEXT_COLOR: Record<number, string> = {
   6: "text-yellow-500",
 };
 
-const TIER_NAMES = ["村", "町", "大きな町", "帝国", "王国", "国"];
+const TIER_NAMES = ["村", "小さな町", "大きな町", "都市", "大都市", "国"];
+const TIER_SHORT_DESCRIPTION = [
+  "牧歌的な草原に建つ基礎施設",
+  "交易が始まる生活施設",
+  "夕暮れに輝く商業・文化施設",
+  "城壁都市を支える中核施設",
+  "高度文明を象徴する大型施設",
+  "国家の威光を示す最高施設",
+];
 
 export function BuildingDetailPopup({
   building,
@@ -49,7 +57,10 @@ export function BuildingDetailPopup({
               </button>
             </div>
             <p className={`text-xs font-medium ${tierColor}`}>
-              {TIER_NAMES[building.requiredTier - 1] ?? "村"}の施設
+              Tier {building.requiredTier} / {TIER_NAMES[building.requiredTier - 1] ?? "村"}の施設
+            </p>
+            <p className="text-muted-foreground text-xs">
+              {TIER_SHORT_DESCRIPTION[building.requiredTier - 1]}
             </p>
           </div>
         </div>
@@ -61,7 +72,8 @@ export function BuildingDetailPopup({
             {building.unlocked ? (
               <>
                 <span>Lv.{building.level}</span>
-                <Badge className={isMaxed ? "bg-gradient-to-r from-amber-400 to-yellow-500 text-white" : ""}>
+                <Badge className={isMaxed ? "gap-1 bg-gradient-to-r from-amber-400 to-yellow-500 text-white shadow shadow-amber-500/30" : ""}>
+                  {isMaxed ? <Crown className="size-3" /> : <Sparkles className="size-3" />}
                   {isMaxed ? "MAX" : `${building.level} / ${building.maxLevel}`}
                 </Badge>
               </>

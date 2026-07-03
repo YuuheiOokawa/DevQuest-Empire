@@ -1,126 +1,66 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import type { VillageBuildingView } from "@/lib/game/buildings";
 import { BuildingDetailPopup } from "@/components/village/BuildingDetailPopup";
 import { Building3D } from "./town3d/Building3D";
-import { Ground, River, CityWall, Fountain, ForestRing } from "./town3d/Scenery3D";
+import {
+  Clouds3D,
+  CityWall,
+  DecorationLayer,
+  FarMountains,
+  ForestRing,
+  Fountain,
+  GodRays3D,
+  Ground,
+  MoatAndHarbor,
+  River,
+  RoadNetwork,
+  Stars3D,
+} from "./town3d/Scenery3D";
 import { layoutBuildings, outerRadiusForTier } from "./town3d/layout";
+import { getTierWorldConfig } from "./town3d/tierWorldConfig";
 
-type SkyTheme = {
-  sky: string;
-  outerRing: string;
-  decorations: React.ReactNode;
-};
-
-// 3Dの地形/建物の背後に敷くCSS製の空(グラデーション+雲/星)。
-// WebGLキャンバスは背景を透過させ、この空を通して見せることで
-// 3Dシーン側は地形と建物だけに専念できるようにしている。
-const SKY_THEME: Record<number, SkyTheme> = {
-  1: {
-    sky: "bg-gradient-to-b from-sky-300 via-sky-100 to-sky-50",
-    outerRing: "",
-    decorations: (
-      <>
-        <div className="bg-primary/10 absolute top-1 right-6 size-10 rounded-full opacity-70" />
-        <div className="animate-drift absolute top-4 left-[10%] h-4 w-14 rounded-full bg-white/80 blur-[1px]" />
-        <div className="animate-drift-slow absolute top-9 left-[45%] h-3 w-10 rounded-full bg-white/70 blur-[1px]" />
-      </>
-    ),
-  },
-  2: {
-    sky: "bg-gradient-to-b from-sky-400 via-sky-200 to-blue-50",
-    outerRing: "",
-    decorations: (
-      <>
-        <div className="bg-primary/10 absolute top-1 right-6 size-10 rounded-full opacity-70" />
-        <div className="animate-drift absolute top-3 left-[15%] h-4 w-16 rounded-full bg-white/80 blur-[1px]" />
-        <div className="animate-drift-slow absolute top-8 left-[55%] h-4 w-12 rounded-full bg-white/70 blur-[1px]" />
-      </>
-    ),
-  },
-  3: {
-    sky: "bg-gradient-to-b from-violet-400 via-indigo-200 to-indigo-50",
-    outerRing: "",
-    decorations: (
-      <>
-        <div className="absolute top-2 right-8 size-9 rounded-full bg-indigo-100/60" />
-        {[12, 28, 44, 62, 78, 90].map((left, i) => (
+function SkyDecoration({ tier }: { tier: number }) {
+  const world = getTierWorldConfig(tier);
+  return (
+    <>
+      {tier <= 2 && (
+        <>
+          <div className="absolute right-8 top-4 size-12 rounded-full bg-yellow-100/80 shadow-[0_0_36px_12px_rgba(250,204,21,0.28)]" />
+          <div className="absolute left-[12%] top-8 h-4 w-20 animate-pulse rounded-full bg-white/70 blur-[1px]" />
+          <div className="absolute left-[48%] top-5 h-3 w-14 animate-pulse rounded-full bg-white/60 blur-[1px]" />
+        </>
+      )}
+      {tier >= 3 &&
+        Array.from({ length: Math.min(26, world.sky.starCount) }).map((_, i) => (
           <div
-            key={left}
-            className="animate-twinkle absolute size-1 rounded-full bg-white"
-            style={{ left: `${left}%`, top: `${8 + (i % 3) * 8}%`, animationDelay: `${i * 0.4}s` }}
+            key={i}
+            className="absolute rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]"
+            style={{
+              left: `${6 + ((i * 17) % 88)}%`,
+              top: `${4 + ((i * 11) % 30)}%`,
+              width: tier >= 6 && i % 4 === 0 ? 3 : 2,
+              height: tier >= 6 && i % 4 === 0 ? 3 : 2,
+              opacity: 0.45 + (i % 5) * 0.1,
+            }}
           />
         ))}
-      </>
-    ),
-  },
-  4: {
-    sky: "bg-gradient-to-b from-fuchsia-400 via-pink-200 to-rose-50",
-    outerRing: "",
-    decorations: (
-      <div className="absolute top-1 right-8 size-11 rounded-full bg-amber-100/70 shadow-[0_0_30px_10px_rgba(251,191,36,0.3)]" />
-    ),
-  },
-  5: {
-    sky: "bg-gradient-to-b from-amber-300 via-yellow-100 to-amber-50",
-    outerRing: "ring-2 ring-amber-300",
-    decorations: (
-      <>
-        <div className="absolute top-0 right-10 size-14 rounded-full bg-yellow-200/80 shadow-[0_0_40px_16px_rgba(250,204,21,0.35)]" />
+      {tier >= 5 && (
         <div
-          className="absolute inset-x-0 top-0 h-24 opacity-40"
+          className="absolute inset-x-0 top-0 h-32 opacity-60"
           style={{
             background:
-              "repeating-conic-gradient(from 0deg at 85% 10%, rgba(253,224,71,0.5) 0deg 6deg, transparent 6deg 18deg)",
+              "repeating-conic-gradient(from 0deg at 82% 6%, rgba(253,224,71,0.58) 0deg 5deg, transparent 5deg 16deg)",
           }}
         />
-      </>
-    ),
-  },
-  6: {
-    sky: "bg-gradient-to-b from-yellow-300 via-amber-100 to-orange-50",
-    outerRing: "ring-4 ring-yellow-300 shadow-lg shadow-amber-500/40",
-    decorations: (
-      <>
-        <div className="absolute top-0 right-10 size-16 rounded-full bg-yellow-100 shadow-[0_0_50px_20px_rgba(250,204,21,0.5)]" />
-        <div
-          className="absolute inset-x-0 top-0 h-28 opacity-50"
-          style={{
-            background:
-              "repeating-conic-gradient(from 0deg at 85% 5%, rgba(253,224,71,0.6) 0deg 6deg, transparent 6deg 16deg)",
-          }}
-        />
-        {[8, 22, 38, 58, 72, 86, 95].map((left, i) => (
-          <div
-            key={left}
-            className="animate-twinkle absolute size-1.5 rounded-full bg-white"
-            style={{ left: `${left}%`, top: `${6 + (i % 4) * 6}%`, animationDelay: `${i * 0.3}s` }}
-          />
-        ))}
-      </>
-    ),
-  },
-};
-
-type LightTheme = {
-  ambient: string;
-  ambientIntensity: number;
-  sun: string;
-  sunIntensity: number;
-  sunPos: [number, number, number];
-};
-
-const LIGHT_THEME: Record<number, LightTheme> = {
-  1: { ambient: "#ffffff", ambientIntensity: 0.7, sun: "#fff6e0", sunIntensity: 1.1, sunPos: [6, 10, 4] },
-  2: { ambient: "#ffffff", ambientIntensity: 0.65, sun: "#fff2d8", sunIntensity: 1.0, sunPos: [6, 10, 4] },
-  3: { ambient: "#c7c2ff", ambientIntensity: 0.5, sun: "#ffb27a", sunIntensity: 0.85, sunPos: [-6, 6, 4] },
-  4: { ambient: "#ffd9ea", ambientIntensity: 0.55, sun: "#ff9ecf", sunIntensity: 0.8, sunPos: [-6, 6, 4] },
-  5: { ambient: "#fff0c2", ambientIntensity: 0.65, sun: "#ffe08a", sunIntensity: 0.95, sunPos: [6, 9, 4] },
-  6: { ambient: "#fff6d0", ambientIntensity: 0.75, sun: "#ffe066", sunIntensity: 1.05, sunPos: [6, 9, 4] },
-};
+      )}
+      <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white/35 to-transparent" />
+    </>
+  );
+}
 
 export function TownScene3D({
   tier,
@@ -129,67 +69,92 @@ export function TownScene3D({
   tier: number;
   buildings: VillageBuildingView[];
 }) {
-  const sky = SKY_THEME[tier] ?? SKY_THEME[1];
-  const light = LIGHT_THEME[tier] ?? LIGHT_THEME[1];
-  const placed = layoutBuildings(buildings);
+  const world = getTierWorldConfig(tier);
   const radius = outerRadiusForTier(tier);
+  const placed = useMemo(() => layoutBuildings(buildings, tier), [buildings, tier]);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const selectedBuilding = buildings.find((b) => b.type === selectedType) ?? null;
+  const unlockedCount = buildings.filter((b) => b.unlocked).length;
+  const maxedCount = buildings.filter((b) => b.maxLevel > 0 && b.level >= b.maxLevel).length;
 
   return (
-    <div
-      className={`relative h-72 w-full overflow-hidden rounded-2xl sm:h-96 ${sky.outerRing}`}
-    >
-      <div className={`absolute inset-0 ${sky.sky}`}>{sky.decorations}</div>
-      <Canvas
-        shadows
-        dpr={[1, 1.5]}
-        camera={{ position: [0, radius * 0.85, radius * 1.25], fov: 38 }}
-        gl={{ alpha: true, antialias: true }}
-        style={{ position: "absolute", inset: 0 }}
-      >
-        <ambientLight color={light.ambient} intensity={light.ambientIntensity} />
-        <directionalLight
-          color={light.sun}
-          intensity={light.sunIntensity}
-          position={light.sunPos}
-          castShadow
-          shadow-mapSize={[1024, 1024]}
-          shadow-camera-left={-radius - 2}
-          shadow-camera-right={radius + 2}
-          shadow-camera-top={radius + 2}
-          shadow-camera-bottom={-radius - 2}
-          shadow-camera-far={40}
-        />
-        <Ground tier={tier} radius={radius + 2} />
-        <River tier={tier} radius={radius} />
-        <CityWall tier={tier} radius={radius} />
-        <ForestRing tier={tier} radius={radius} />
-        <Fountain tier={tier} />
-        {placed.map((b) => (
-          <Building3D
-            key={b.type}
-            type={b.type}
-            requiredTier={b.requiredTier}
-            level={b.level}
-            unlocked={b.unlocked}
-            position={b.position}
-            rotationY={b.rotationY}
-            onSelect={setSelectedType}
+    <section className="space-y-2">
+      <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
+        <span>{world.name} / 3D発展シーン</span>
+        <span>建物 {unlockedCount}/{buildings.length} ・ MAX {maxedCount}</span>
+      </div>
+      <div className={`relative h-80 w-full overflow-hidden rounded-2xl ring-1 ring-black/10 sm:h-[420px] ${tier >= 6 ? "shadow-xl shadow-amber-500/30" : "shadow-sm"}`}>
+        <div className={`absolute inset-0 ${world.sky.css}`}>
+          <SkyDecoration tier={tier} />
+        </div>
+        <Canvas
+          shadows
+          dpr={[1, 1.5]}
+          camera={{ position: [0, radius * 0.78, radius * 1.2], fov: 38 }}
+          gl={{ alpha: true, antialias: true, powerPreference: "high-performance" }}
+          style={{ position: "absolute", inset: 0 }}
+        >
+          {world.lighting.fog && <fog attach="fog" args={[world.lighting.fog, radius * 0.9, radius * 2.8]} />}
+          <ambientLight color={world.lighting.ambient} intensity={world.lighting.ambientIntensity} />
+          <hemisphereLight args={[world.sky.horizon, world.groundColor, 0.35]} />
+          <directionalLight
+            color={world.lighting.sun}
+            intensity={world.lighting.sunIntensity}
+            position={world.lighting.sunPosition}
+            castShadow
+            shadow-mapSize={[1024, 1024]}
+            shadow-camera-left={-radius - 2}
+            shadow-camera-right={radius + 2}
+            shadow-camera-top={radius + 2}
+            shadow-camera-bottom={-radius - 2}
+            shadow-camera-far={50}
           />
-        ))}
-        <OrbitControls
-          target={[0, 0.3, 0]}
-          autoRotate
-          autoRotateSpeed={0.6}
-          enableRotate={false}
-          enableZoom={false}
-          enablePan={false}
-        />
-      </Canvas>
+          {tier >= 4 && <pointLight color={world.palette.window} position={[0, 2.3, 0]} intensity={0.5} distance={radius * 1.4} />}
+          {tier >= 6 && <pointLight color={world.palette.accent} position={[0, 5, -radius * 0.45]} intensity={1.2} distance={radius * 2} />}
+
+          <GodRays3D tier={tier} radius={radius} />
+          <Stars3D tier={tier} radius={radius} />
+          <Clouds3D tier={tier} radius={radius} />
+          <FarMountains tier={tier} radius={radius} />
+          <Ground tier={tier} radius={radius + 1.5} />
+          <RoadNetwork tier={tier} radius={radius} />
+          <River tier={tier} radius={radius} />
+          <MoatAndHarbor tier={tier} radius={radius} />
+          <CityWall tier={tier} radius={radius} />
+          <DecorationLayer tier={tier} radius={radius} />
+          <ForestRing tier={tier} radius={radius} />
+          <Fountain tier={tier} />
+
+          {placed.map((b) => (
+            <Building3D
+              key={b.type}
+              type={b.type}
+              requiredTier={b.requiredTier}
+              level={b.level}
+              maxLevel={b.maxLevel}
+              unlocked={b.unlocked}
+              position={b.position}
+              rotationY={b.rotationY}
+              onSelect={setSelectedType}
+            />
+          ))}
+          <OrbitControls
+            target={[0, 0.45, 0]}
+            autoRotate
+            autoRotateSpeed={tier >= 6 ? 0.45 : 0.32}
+            enableRotate={false}
+            enableZoom={false}
+            enablePan={false}
+          />
+        </Canvas>
+        <div className="pointer-events-none absolute bottom-3 left-3 rounded-xl bg-black/35 px-3 py-2 text-xs text-white backdrop-blur">
+          <div className="font-semibold">Tier {tier}: {world.name}</div>
+          <div className="opacity-85">{world.description}</div>
+        </div>
+      </div>
       {selectedBuilding && (
         <BuildingDetailPopup building={selectedBuilding} onClose={() => setSelectedType(null)} />
       )}
-    </div>
+    </section>
   );
 }

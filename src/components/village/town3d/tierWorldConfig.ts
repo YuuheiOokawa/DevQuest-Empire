@@ -9,66 +9,162 @@ export type Palette3D = {
 export type Tier = 1 | 2 | 3 | 4 | 5 | 6;
 
 export type TierWorldConfig = {
+  name: string;
+  role: string;
+  description: string;
   palette: Palette3D;
   groundColor: string;
+  secondaryGroundColor: string;
+  roadColor: string;
   waterColor: string;
   wallColor?: string;
+  treeColor: string;
   treeCount: number;
+  sky: {
+    css: string;
+    horizon: string;
+    starCount: number;
+    cloudCount: number;
+    godRayCount: number;
+  };
+  layout: {
+    density: number;
+    roadRings: number;
+    plazaRadius: number;
+    hasBridge: boolean;
+    hasMoat: boolean;
+    hasHarbor: boolean;
+    hasMountains: boolean;
+  };
+  lighting: {
+    ambient: string;
+    ambientIntensity: number;
+    sun: string;
+    sunIntensity: number;
+    sunPosition: [number, number, number];
+    fog?: string;
+  };
+  decoration: {
+    farmPlots: number;
+    flowerPatches: number;
+    lamps: number;
+    towers: number;
+    banners: number;
+  };
   effects: {
     smoke: boolean;
     flags: boolean;
     waterShimmer: boolean;
+    windowsGlow: boolean;
+    sparkles: boolean;
   };
 };
 
-// ティアごとの世界観設定を1箇所に集約する。建物の配色(建てられた時代を保持)・
-// 地形/水面の色・城壁の有無・森の密度・環境エフェクトのON/OFFをここだけで管理し、
-// 新しいティアや演出を追加する際もこのオブジェクトの追記だけで済むようにする。
 export const TIER_WORLD_CONFIG: Record<Tier, TierWorldConfig> = {
   1: {
-    palette: { wall: "#e8d3a0", roof: "#8b4a2b", trim: "#5c3a21", window: "#4a6fa5", accent: "#8b2e2e" },
+    name: "村",
+    role: "小さな村の始まり",
+    description: "牧歌的な草原、白い雲、少数の木造家屋。未解放の建物予定地が余白として見える段階。",
+    palette: { wall: "#e8d3a0", roof: "#8b4a2b", trim: "#5c3a21", window: "#6aa6d8", accent: "#2f7d45" },
     groundColor: "#4d8a3f",
+    secondaryGroundColor: "#79b957",
+    roadColor: "#c9a46a",
     waterColor: "#4a90c2",
+    treeColor: "#2f7d45",
     treeCount: 14,
-    effects: { smoke: true, flags: false, waterShimmer: false },
+    sky: { css: "bg-gradient-to-b from-sky-300 via-sky-100 to-sky-50", horizon: "#d9f4ff", starCount: 0, cloudCount: 5, godRayCount: 0 },
+    layout: { density: 0.72, roadRings: 0, plazaRadius: 0.72, hasBridge: true, hasMoat: false, hasHarbor: false, hasMountains: true },
+    lighting: { ambient: "#ffffff", ambientIntensity: 0.76, sun: "#fff6e0", sunIntensity: 1.15, sunPosition: [6, 10, 4], fog: "#e6fff0" },
+    decoration: { farmPlots: 4, flowerPatches: 5, lamps: 0, towers: 0, banners: 0 },
+    effects: { smoke: true, flags: false, waterShimmer: false, windowsGlow: false, sparkles: false },
   },
   2: {
-    palette: { wall: "#d3cabd", roof: "#b5502e", trim: "#7d7566", window: "#5a7fa8", accent: "#6b7280" },
+    name: "小さな町",
+    role: "交易が生まれる町",
+    description: "道路と橋が整い、商店・広場・教会が見え始める。建物数と密度が一段増える。",
+    palette: { wall: "#d3cabd", roof: "#b5502e", trim: "#7d7566", window: "#6fa2cf", accent: "#2563eb" },
     groundColor: "#6b9c4f",
+    secondaryGroundColor: "#8fbd68",
+    roadColor: "#d7b06f",
     waterColor: "#4a90c2",
+    treeColor: "#347a3d",
     treeCount: 15,
-    effects: { smoke: true, flags: true, waterShimmer: false },
+    sky: { css: "bg-gradient-to-b from-sky-400 via-sky-200 to-blue-50", horizon: "#caedff", starCount: 0, cloudCount: 6, godRayCount: 0 },
+    layout: { density: 0.84, roadRings: 1, plazaRadius: 0.85, hasBridge: true, hasMoat: false, hasHarbor: false, hasMountains: true },
+    lighting: { ambient: "#ffffff", ambientIntensity: 0.7, sun: "#fff2d8", sunIntensity: 1.05, sunPosition: [6, 10, 4], fog: "#edf8ff" },
+    decoration: { farmPlots: 5, flowerPatches: 6, lamps: 4, towers: 0, banners: 2 },
+    effects: { smoke: true, flags: true, waterShimmer: false, windowsGlow: false, sparkles: false },
   },
   3: {
-    palette: { wall: "#c07a5c", roof: "#3d4a5c", trim: "#4a3527", window: "#f2c94c", accent: "#6d5dd3" },
+    name: "大きな町",
+    role: "商業と文化の発展",
+    description: "夕暮れのグラデーション、星の出始め、暖色の窓明かり。市場・工房・ギルドが密集。",
+    palette: { wall: "#c07a5c", roof: "#334155", trim: "#4a3527", window: "#f2c94c", accent: "#7c3aed" },
     groundColor: "#7a8f6a",
+    secondaryGroundColor: "#a58b63",
+    roadColor: "#b88b5a",
     waterColor: "#3d6d9c",
+    treeColor: "#315c40",
     treeCount: 16,
-    effects: { smoke: true, flags: true, waterShimmer: true },
+    sky: { css: "bg-gradient-to-b from-indigo-700 via-violet-400 to-orange-200", horizon: "#ffb36b", starCount: 18, cloudCount: 4, godRayCount: 0 },
+    layout: { density: 0.96, roadRings: 1, plazaRadius: 0.96, hasBridge: true, hasMoat: false, hasHarbor: false, hasMountains: true },
+    lighting: { ambient: "#c7c2ff", ambientIntensity: 0.56, sun: "#ffb27a", sunIntensity: 0.9, sunPosition: [-6, 6, 4], fog: "#f5b47b" },
+    decoration: { farmPlots: 2, flowerPatches: 5, lamps: 10, towers: 2, banners: 4 },
+    effects: { smoke: true, flags: true, waterShimmer: true, windowsGlow: true, sparkles: false },
   },
   4: {
-    palette: { wall: "#f1e4e0", roof: "#4f7a6b", trim: "#ffffff", window: "#f2c94c", accent: "#c2185b" },
-    groundColor: "#c9b8a8",
+    name: "都市",
+    role: "城壁を持つ都市",
+    description: "夜空と星、城壁、門、塔、街灯。外周は防衛線、中心は広場と行政区になる。",
+    palette: { wall: "#f1e4e0", roof: "#294565", trim: "#ffffff", window: "#f2c94c", accent: "#e11d48" },
+    groundColor: "#958477",
+    secondaryGroundColor: "#b9a695",
+    roadColor: "#d6c0a3",
     waterColor: "#5aa0c8",
     wallColor: "#c9b8a8",
+    treeColor: "#233b35",
     treeCount: 17,
-    effects: { smoke: false, flags: true, waterShimmer: true },
+    sky: { css: "bg-gradient-to-b from-slate-950 via-indigo-900 to-rose-300", horizon: "#fb7185", starCount: 36, cloudCount: 2, godRayCount: 0 },
+    layout: { density: 1.08, roadRings: 2, plazaRadius: 1.05, hasBridge: true, hasMoat: true, hasHarbor: false, hasMountains: false },
+    lighting: { ambient: "#b9c2ff", ambientIntensity: 0.5, sun: "#ff9ecf", sunIntensity: 0.72, sunPosition: [-6, 5, 4], fog: "#322859" },
+    decoration: { farmPlots: 0, flowerPatches: 3, lamps: 18, towers: 6, banners: 8 },
+    effects: { smoke: false, flags: true, waterShimmer: true, windowsGlow: true, sparkles: true },
   },
   5: {
-    palette: { wall: "#f7ecd1", roof: "#d4a017", trim: "#c9a227", window: "#fff2c2", accent: "#c9a227" },
-    groundColor: "#d9c48a",
+    name: "大都市",
+    role: "高度文明の中心",
+    description: "深い夜空、巨大ドーム、大学・劇場・銀行・港。建物は高く密集し、街全体が輝く。",
+    palette: { wall: "#f7ecd1", roof: "#d4a017", trim: "#c9a227", window: "#fff2c2", accent: "#f59e0b" },
+    groundColor: "#bfa96d",
+    secondaryGroundColor: "#d9c48a",
+    roadColor: "#ead7a1",
     waterColor: "#7fc4e0",
     wallColor: "#d9c48a",
+    treeColor: "#365942",
     treeCount: 18,
-    effects: { smoke: false, flags: true, waterShimmer: true },
+    sky: { css: "bg-gradient-to-b from-slate-950 via-blue-950 to-amber-300", horizon: "#facc15", starCount: 52, cloudCount: 1, godRayCount: 2 },
+    layout: { density: 1.18, roadRings: 2, plazaRadius: 1.15, hasBridge: true, hasMoat: true, hasHarbor: true, hasMountains: false },
+    lighting: { ambient: "#fff0c2", ambientIntensity: 0.62, sun: "#ffe08a", sunIntensity: 0.92, sunPosition: [6, 9, 4], fog: "#382f1b" },
+    decoration: { farmPlots: 0, flowerPatches: 2, lamps: 28, towers: 8, banners: 12 },
+    effects: { smoke: false, flags: true, waterShimmer: true, windowsGlow: true, sparkles: true },
   },
   6: {
-    palette: { wall: "#fff6dd", roof: "#f0c419", trim: "#ffe066", window: "#fff8e0", accent: "#ffe066" },
-    groundColor: "#e8d18a",
+    name: "国",
+    role: "黄金の空に包まれた繁栄の頂点",
+    description: "黄金の空、放射光、瞬く星、巨大王城、宮殿、神殿。都市全体が一つの国家として完成。",
+    palette: { wall: "#fff6dd", roof: "#f0c419", trim: "#ffe066", window: "#fff8e0", accent: "#facc15" },
+    groundColor: "#d7bd72",
+    secondaryGroundColor: "#f0dfa0",
+    roadColor: "#fff0b9",
     waterColor: "#a8e0f0",
     wallColor: "#f0dfa0",
+    treeColor: "#4f6f45",
     treeCount: 20,
-    effects: { smoke: false, flags: true, waterShimmer: true },
+    sky: { css: "bg-gradient-to-b from-yellow-300 via-amber-100 to-orange-50", horizon: "#fff7ad", starCount: 68, cloudCount: 0, godRayCount: 9 },
+    layout: { density: 1.28, roadRings: 3, plazaRadius: 1.24, hasBridge: true, hasMoat: true, hasHarbor: true, hasMountains: false },
+    lighting: { ambient: "#fff6d0", ambientIntensity: 0.78, sun: "#ffe066", sunIntensity: 1.12, sunPosition: [6, 9, 4], fog: "#fff1a8" },
+    decoration: { farmPlots: 0, flowerPatches: 4, lamps: 36, towers: 12, banners: 18 },
+    effects: { smoke: false, flags: true, waterShimmer: true, windowsGlow: true, sparkles: true },
   },
 };
 
