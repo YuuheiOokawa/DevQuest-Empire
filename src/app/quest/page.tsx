@@ -39,8 +39,8 @@ export default async function QuestPage() {
       <Card>
         <CardContent className="flex flex-col gap-3 py-4">
           <div className="flex items-center justify-between gap-2">
-            <span className="font-medium">{todaysQuest.title}</span>
-            <Badge variant="secondary">
+            <span className="min-w-0 truncate font-medium">{todaysQuest.title}</span>
+            <Badge variant="secondary" className="shrink-0">
               {DIFFICULTY_LABEL[todaysQuest.difficulty] ?? todaysQuest.difficulty} ・
               +{todaysQuest.expReward}EXP
             </Badge>
@@ -65,8 +65,11 @@ export default async function QuestPage() {
             {pastQuests.map((quest) => (
               <Card key={quest.id}>
                 <CardContent className="flex items-center justify-between gap-2 py-3">
-                  <span className="text-sm">{quest.title}</span>
-                  <Badge variant={quest.status === "completed" ? "default" : "secondary"}>
+                  <span className="min-w-0 truncate text-sm">{quest.title}</span>
+                  <Badge
+                    variant={quest.status === "completed" ? "default" : "secondary"}
+                    className="shrink-0"
+                  >
                     {quest.status === "completed" ? "達成済み" : "未達成"}
                   </Badge>
                 </CardContent>

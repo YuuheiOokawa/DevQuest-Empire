@@ -38,8 +38,8 @@ export default async function DashboardPage() {
       <AppNav />
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8">
         <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold">{player.name}</h1>
+          <div className="min-w-0">
+            <h1 className="truncate text-2xl font-bold">{player.name}</h1>
             <p className="text-muted-foreground text-sm">Lv.{level}</p>
           </div>
           <SyncButton />
@@ -55,7 +55,7 @@ export default async function DashboardPage() {
         <Card>
           <CardContent className="flex flex-col gap-2 py-4">
             <h2 className="font-semibold">直近7日間の活動</h2>
-            <div className="text-muted-foreground flex gap-4 text-sm">
+            <div className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-sm">
               <span>Commit {activity.last7Days.commits}</span>
               <span>Issue Close {activity.last7Days.issues}</span>
               <span>PR Merge {activity.last7Days.prs}</span>
@@ -67,9 +67,9 @@ export default async function DashboardPage() {
         <Link href="/quest">
           <Card className="hover:bg-accent transition-colors">
             <CardContent className="flex items-center justify-between gap-4 py-4">
-              <div>
+              <div className="min-w-0">
                 <h2 className="font-semibold">今日のクエスト</h2>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-muted-foreground truncate text-sm">
                   {todaysQuest.title}
                 </p>
               </div>
@@ -80,7 +80,7 @@ export default async function DashboardPage() {
           </Card>
         </Link>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Link href="/village">
             <Card className="hover:bg-accent transition-colors">
               <CardContent className="py-4">
