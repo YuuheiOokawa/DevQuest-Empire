@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { recalcLevel } from "@/lib/game/exp";
 import { unlockBuildings } from "@/lib/game/buildings";
 import { unlockAchievements } from "@/lib/game/achievements";
+import { unlockTitles } from "@/lib/game/titles";
 
 function todayDateOnly(): Date {
   return new Date(new Date().toISOString().slice(0, 10));
@@ -59,6 +60,7 @@ export type ClaimLoginBonusResult = {
   newLevel: number;
   unlockedBuildings: string[];
   unlockedAchievements: string[];
+  unlockedTitles: string[];
 };
 
 /**
@@ -100,6 +102,7 @@ export async function claimLoginBonus(
     ? await unlockBuildings(userId, updatedPlayer.village.id, level)
     : [];
   const unlockedAchievements = await unlockAchievements(userId, false);
+  const unlockedTitles = await unlockTitles(updatedPlayer.id, level);
 
   return {
     expGained,
@@ -107,5 +110,6 @@ export async function claimLoginBonus(
     newLevel: level,
     unlockedBuildings,
     unlockedAchievements,
+    unlockedTitles,
   };
 }

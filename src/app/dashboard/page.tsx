@@ -8,6 +8,7 @@ import { getVillageBuildingsView } from "@/lib/game/buildings";
 import { getAchievementsView } from "@/lib/game/achievements";
 import { getOrCreateTodaysQuest } from "@/lib/game/quest";
 import { getLoginBonusStatus } from "@/lib/game/loginBonus";
+import { getTitlesView, getEquippedTitleName } from "@/lib/game/titles";
 import { AppNav } from "@/components/layout/AppNav";
 import { SyncButton } from "@/components/github/SyncButton";
 import { LoginBonusCard } from "@/components/login-bonus/LoginBonusCard";
@@ -24,18 +25,21 @@ export default async function DashboardPage() {
   const player = await prisma.player.findUniqueOrThrow({ where: { userId } });
   const { level, currentExp, expToNextLevel } = recalcLevel(player.exp);
 
-  const [activity, buildings, achievements, todaysQuest, loginBonus] =
+  const [activity, buildings, achievements, todaysQuest, loginBonus, titles, equippedTitle] =
     await Promise.all([
       getActivitySummary(userId),
       getVillageBuildingsView(userId),
       getAchievementsView(userId),
       getOrCreateTodaysQuest(userId),
       getLoginBonusStatus(userId),
+      getTitlesView(userId),
+      getEquippedTitleName(userId),
     ]);
 
   const unlockedBuildingCount = buildings?.filter((b) => b.unlocked).length ?? 0;
   const unlockedAchievementCount =
     achievements?.filter((a) => a.unlocked).length ?? 0;
+  const unlockedTitleCount = titles?.filter((t) => t.unlocked).length ?? 0;
 
   return (
     <>
@@ -43,6 +47,11 @@ export default async function DashboardPage() {
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
+            {equippedTitle && (
+              <p className="text-primary truncate text-xs font-medium">
+                {equippedTitle}
+              </p>
+            )}
             <h1 className="truncate text-2xl font-bold">{player.name}</h1>
             <p className="text-muted-foreground text-sm">Lv.{level}</p>
           </div>
@@ -90,7 +99,7 @@ export default async function DashboardPage() {
           </Card>
         </Link>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Link href="/village">
             <Card className="hover:bg-accent transition-colors">
               <CardContent className="py-4">
@@ -107,6 +116,16 @@ export default async function DashboardPage() {
                 <h2 className="font-semibold">実績</h2>
                 <p className="text-muted-foreground text-sm">
                   {unlockedAchievementCount} / {achievements?.length ?? 0} 達成
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/titles">
+            <Card className="hover:bg-accent transition-colors">
+              <CardContent className="py-4">
+                <h2 className="font-semibold">称号</h2>
+                <p className="text-muted-foreground text-sm">
+                  {unlockedTitleCount} / {titles?.length ?? 0} 解放
                 </p>
               </CardContent>
             </Card>

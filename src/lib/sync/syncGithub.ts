@@ -8,6 +8,7 @@ import {
 import { EXP_RATES, recalcLevel } from "@/lib/game/exp";
 import { unlockBuildings } from "@/lib/game/buildings";
 import { updateStreak, unlockAchievements } from "@/lib/game/achievements";
+import { unlockTitles } from "@/lib/game/titles";
 
 export type SyncResult = {
   newCommits: number;
@@ -17,6 +18,7 @@ export type SyncResult = {
   newLevel: number;
   unlockedBuildings: string[];
   unlockedAchievements: string[];
+  unlockedTitles: string[];
 };
 
 function isToday(date: Date): boolean {
@@ -170,6 +172,7 @@ export async function syncGithubForUser(userId: string): Promise<SyncResult> {
 
   await updateStreak(userId, hasActivityToday);
   const unlockedAchievements = await unlockAchievements(userId, isFirstSync);
+  const unlockedTitles = await unlockTitles(updatedPlayer.id, level);
 
   return {
     newCommits,
@@ -179,5 +182,6 @@ export async function syncGithubForUser(userId: string): Promise<SyncResult> {
     newLevel: level,
     unlockedBuildings,
     unlockedAchievements,
+    unlockedTitles,
   };
 }
