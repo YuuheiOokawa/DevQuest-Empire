@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Award } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { getTitlesView } from "@/lib/game/titles";
 import { AppNav } from "@/components/layout/AppNav";
@@ -17,7 +18,10 @@ export default async function TitlesPage() {
       <AppNav />
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-10">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold">称号</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold">
+            <Award className="text-primary size-6" />
+            称号
+          </h1>
           <p className="text-muted-foreground text-sm">
             レベルアップで新しい称号が解放されます。装着する称号を選べます。
           </p>

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { BookOpen } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { getStudySummary } from "@/lib/game/study";
 import { AppNav } from "@/components/layout/AppNav";
@@ -18,7 +19,10 @@ export default async function StudyPage() {
       <AppNav />
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-10">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold">学習記録</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold">
+            <BookOpen className="text-primary size-6" />
+            学習記録
+          </h1>
           <p className="text-muted-foreground text-sm">
             学習時間10分あたり5EXPを獲得できます。
           </p>
