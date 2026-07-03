@@ -1,15 +1,18 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { Agent } from "undici";
 
-// 社内ネットワークのTLS中間プロキシにより証明書検証が失敗するため、
-// このクライアントに限定してTLS検証をスキップする(lib/prisma.tsと同様の対応)。
-const insecureDispatcher = new Agent({
-  connect: { rejectUnauthorized: false },
-});
-
+// ローカル開発環境(社内ネットワーク)のTLS中間プロキシにより証明書検証が
+// 失敗するため、ローカルに限りこのクライアントのTLS検証をスキップする
+// (lib/prisma.tsと同様の対応)。Vercel上では正規の検証を行う。
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
-  fetchOptions: { dispatcher: insecureDispatcher },
+  ...(process.env.VERCEL
+    ? {}
+    : {
+        fetchOptions: {
+          dispatcher: new Agent({ connect: { rejectUnauthorized: false } }),
+        },
+      }),
 });
 
 // 軽量・低コストなモデルを使用する(18_Phase3_Detailed_Design.md Part4)

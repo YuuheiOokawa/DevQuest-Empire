@@ -1,13 +1,14 @@
 import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
-// 社内ネットワークのTLS中間プロキシにより、Postgres接続時の証明書検証が
-// 失敗するため、rejectUnauthorized: false でTLS検証をスキップしている。
+// ローカル開発環境(社内ネットワーク)のTLS中間プロキシにより、Postgres接続時の
+// 証明書検証が失敗するため、ローカルに限りrejectUnauthorized: falseで回避する。
+// Vercel上(本番/プレビュー)には中間プロキシが無いため正規の検証を行う。
 // （Prismaのネイティブschema-engineバイナリはこの回避策が効かないため、
 //   Migrateは scripts/db-apply-migration.mjs 経由で適用している）
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: process.env.VERCEL ? true : { rejectUnauthorized: false },
 });
 
 const globalForPrisma = globalThis as unknown as {
