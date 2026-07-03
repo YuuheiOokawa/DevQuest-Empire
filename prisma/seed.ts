@@ -186,6 +186,17 @@ const missionMasters = [
   },
 ];
 
+const qualificationMasters = [
+  { type: "java_silver", name: "Java Silver (Oracle Certified Java Programmer, Silver)", category: "Java" },
+  { type: "java_gold", name: "Java Gold (Oracle Certified Java Programmer, Gold)", category: "Java" },
+  { type: "fe", name: "基本情報技術者試験", category: "情報処理" },
+  { type: "ap", name: "応用情報技術者試験", category: "情報処理" },
+  { type: "aws_clf", name: "AWS Certified Cloud Practitioner", category: "AWS" },
+  { type: "aws_saa", name: "AWS Certified Solutions Architect - Associate", category: "AWS" },
+  { type: "lpic1", name: "LPIC-1", category: "Linux" },
+  { type: "gcp_ace", name: "Google Cloud Associate Cloud Engineer", category: "GCP" },
+];
+
 async function main() {
   for (const b of buildingMasters) {
     await prisma.buildingMaster.upsert({
@@ -219,12 +230,20 @@ async function main() {
     });
   }
 
+  for (const q of qualificationMasters) {
+    await prisma.qualificationMaster.upsert({
+      where: { type: q.type },
+      update: q,
+      create: q,
+    });
+  }
+
   // FallbackQuestはユニークキーを持たないため、毎回全消し→再投入する
   await prisma.fallbackQuest.deleteMany();
   await prisma.fallbackQuest.createMany({ data: fallbackQuests });
 
   console.log(
-    `Seed完了: BuildingMaster ${buildingMasters.length}件 / AchievementMaster ${achievementMasters.length}件 / TitleMaster ${titleMasters.length}件 / MissionMaster ${missionMasters.length}件 / FallbackQuest ${fallbackQuests.length}件`
+    `Seed完了: BuildingMaster ${buildingMasters.length}件 / AchievementMaster ${achievementMasters.length}件 / TitleMaster ${titleMasters.length}件 / MissionMaster ${missionMasters.length}件 / QualificationMaster ${qualificationMasters.length}件 / FallbackQuest ${fallbackQuests.length}件`
   );
 }
 

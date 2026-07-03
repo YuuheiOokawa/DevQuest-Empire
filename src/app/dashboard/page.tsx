@@ -10,6 +10,8 @@ import { getOrCreateTodaysQuest } from "@/lib/game/quest";
 import { getLoginBonusStatus } from "@/lib/game/loginBonus";
 import { getTitlesView, getEquippedTitleName } from "@/lib/game/titles";
 import { getMissionsView } from "@/lib/game/missions";
+import { getStudySummary } from "@/lib/game/study";
+import { getQualificationsView } from "@/lib/game/qualifications";
 import { AppNav } from "@/components/layout/AppNav";
 import { SyncButton } from "@/components/github/SyncButton";
 import { LoginBonusCard } from "@/components/login-bonus/LoginBonusCard";
@@ -35,6 +37,8 @@ export default async function DashboardPage() {
     titles,
     equippedTitle,
     missions,
+    studySummary,
+    qualifications,
   ] = await Promise.all([
     getActivitySummary(userId),
     getVillageBuildingsView(userId),
@@ -44,6 +48,8 @@ export default async function DashboardPage() {
     getTitlesView(userId),
     getEquippedTitleName(userId),
     getMissionsView(userId),
+    getStudySummary(userId, 1),
+    getQualificationsView(userId),
   ]);
 
   const unlockedBuildingCount = buildings?.filter((b) => b.unlocked).length ?? 0;
@@ -52,6 +58,8 @@ export default async function DashboardPage() {
   const unlockedTitleCount = titles?.filter((t) => t.unlocked).length ?? 0;
   const claimableMissionCount =
     missions?.filter((m) => m.claimable).length ?? 0;
+  const passedQualificationCount =
+    qualifications?.filter((q) => q.status === "passed").length ?? 0;
 
   return (
     <>
@@ -151,6 +159,26 @@ export default async function DashboardPage() {
                 <h2 className="font-semibold">称号</h2>
                 <p className="text-muted-foreground text-sm">
                   {unlockedTitleCount} / {titles?.length ?? 0} 解放
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/study">
+            <Card className="hover:bg-accent transition-colors">
+              <CardContent className="py-4">
+                <h2 className="font-semibold">学習</h2>
+                <p className="text-muted-foreground text-sm">
+                  累計{studySummary?.totalMinutes ?? 0}分
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/qualifications">
+            <Card className="hover:bg-accent transition-colors">
+              <CardContent className="py-4">
+                <h2 className="font-semibold">資格</h2>
+                <p className="text-muted-foreground text-sm">
+                  {passedQualificationCount} / {qualifications?.length ?? 0} 合格
                 </p>
               </CardContent>
             </Card>
