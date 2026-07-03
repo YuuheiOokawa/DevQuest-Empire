@@ -128,3 +128,51 @@
     @apply font-sans;
   }
 }
+
+@keyframes drift {
+  0% {
+    transform: translateX(-8%);
+  }
+  50% {
+    transform: translateX(8%);
+  }
+  100% {
+    transform: translateX(-8%);
+  }
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes rise {
+  0% {
+    transform: translateY(6px) scale(0.9);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@layer utilities {
+  .animate-drift {
+    animation: drift 18s ease-in-out infinite;
+  }
+  .animate-drift-slow {
+    animation: drift 26s ease-in-out infinite;
+  }
+  .animate-twinkle {
+    animation: twinkle 2.4s ease-in-out infinite;
+  }
+  .animate-rise {
+    animation: rise 0.4s ease-out both;
+  }
+}

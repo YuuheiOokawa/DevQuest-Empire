@@ -28,7 +28,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  session: { strategy: "database" },
+  // GitHubへの再ログインを毎回求めないよう、セッションを60日間・
+  // アクセスするたびに有効期限をスライド延長する設定にしている。
+  session: {
+    strategy: "database",
+    maxAge: 60 * 60 * 24 * 60, // 60日
+    updateAge: 60 * 60 * 24, // 1日ごとに有効期限を延長
+  },
   callbacks: {
     async session({ session, user }) {
       if (session.user) {
