@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { Prisma } from "../src/generated/prisma/client";
 import { prisma } from "../src/lib/prisma";
 
 // マスタデータ定義の根拠: 18_Phase3_Detailed_Design.md Part2 / Part3
@@ -304,31 +305,123 @@ const fallbackQuests = [
   { title: "エラーハンドリングを見直す", description: "1つの関数のエラーハンドリングを見直し、改善してみましょう。", difficulty: "hard" },
 ];
 
+// unlockConditionがnullの実績は、コード側のイベントフラグ(isFirstSyncなど)で判定する。
+// それ以外は lib/game/unlockConditions.ts の指標(UnlockMetric)に対する
+// しきい値判定(metric >= value)で自動アンロックされる。
 const achievementMasters = [
   {
     type: "first_sync",
     name: "はじめの一歩",
     condition: "初回のGitHub同期を完了する",
+    unlockCondition: Prisma.JsonNull,
   },
   {
     type: "streak_7",
     name: "習慣化",
     condition: "最長連続活動日数が7日以上になる",
+    unlockCondition: { metric: "longestStreak", operator: ">=", value: 7 },
+  },
+  {
+    type: "streak_30",
+    name: "不屈の継続者",
+    condition: "最長連続活動日数が30日以上になる",
+    unlockCondition: { metric: "longestStreak", operator: ">=", value: 30 },
   },
   {
     type: "commit_100",
     name: "百の頂",
     condition: "累計コミット数が100件以上になる",
+    unlockCondition: { metric: "commitCount", operator: ">=", value: 100 },
+  },
+  {
+    type: "commit_500",
+    name: "コミットの化身",
+    condition: "累計コミット数が500件以上になる",
+    unlockCondition: { metric: "commitCount", operator: ">=", value: 500 },
+  },
+  {
+    type: "issue_close_50",
+    name: "課題解決人",
+    condition: "累計Issueクローズ数が50件以上になる",
+    unlockCondition: { metric: "issueCloseCount", operator: ">=", value: 50 },
+  },
+  {
+    type: "pr_open_50",
+    name: "提案の達人",
+    condition: "累計Pull Request作成数が50件以上になる",
+    unlockCondition: { metric: "prOpenCount", operator: ">=", value: 50 },
   },
   {
     type: "pr_merge_10",
     name: "マージ職人",
     condition: "累計Pull Requestマージ数が10件以上になる",
+    unlockCondition: { metric: "prMergeCount", operator: ">=", value: 10 },
   },
   {
     type: "quest_30",
     name: "継続は力なり",
     condition: "完了済みクエスト数が30件以上になる",
+    unlockCondition: { metric: "questCompletedCount", operator: ">=", value: 30 },
+  },
+  {
+    type: "study_600",
+    name: "勉強家",
+    condition: "累計学習時間が600分(10時間)以上になる",
+    unlockCondition: { metric: "studyMinutesTotal", operator: ">=", value: 600 },
+  },
+  {
+    type: "study_3000",
+    name: "知識の探究者",
+    condition: "累計学習時間が3000分(50時間)以上になる",
+    unlockCondition: { metric: "studyMinutesTotal", operator: ">=", value: 3000 },
+  },
+  {
+    type: "qualification_1",
+    name: "有資格者",
+    condition: "資格に1件以上合格する",
+    unlockCondition: { metric: "qualificationsPassedCount", operator: ">=", value: 1 },
+  },
+  {
+    type: "qualification_5",
+    name: "資格コレクター",
+    condition: "資格に5件以上合格する",
+    unlockCondition: { metric: "qualificationsPassedCount", operator: ">=", value: 5 },
+  },
+  {
+    type: "mission_50",
+    name: "ミッションマスター",
+    condition: "ミッション累計達成数が50件以上になる",
+    unlockCondition: { metric: "missionsClaimedTotal", operator: ">=", value: 50 },
+  },
+  {
+    type: "village_tier_town",
+    name: "町の礎",
+    condition: "村が町以上に発展する",
+    unlockCondition: { metric: "villageTier", operator: ">=", value: 2 },
+  },
+  {
+    type: "village_tier_kingdom",
+    name: "王国の礎",
+    condition: "村が王国以上に発展する",
+    unlockCondition: { metric: "villageTier", operator: ">=", value: 5 },
+  },
+  {
+    type: "village_tier_nation",
+    name: "建国者",
+    condition: "村が国(最終形態)まで発展する",
+    unlockCondition: { metric: "villageTier", operator: ">=", value: 6 },
+  },
+  {
+    type: "level_20",
+    name: "熟練の証",
+    condition: "プレイヤーレベル20に到達する",
+    unlockCondition: { metric: "level", operator: ">=", value: 20 },
+  },
+  {
+    type: "level_50",
+    name: "頂への到達",
+    condition: "プレイヤーレベル50に到達する",
+    unlockCondition: { metric: "level", operator: ">=", value: 50 },
   },
 ];
 
@@ -362,6 +455,42 @@ const titleMasters = [
     name: "伝説の開発者",
     condition: "プレイヤーレベル30に到達する",
     unlockCondition: { metric: "level", operator: ">=", value: 30 },
+  },
+  {
+    type: "streak_keeper",
+    name: "継続の探求者",
+    condition: "最長連続活動日数が14日以上になる",
+    unlockCondition: { metric: "longestStreak", operator: ">=", value: 14 },
+  },
+  {
+    type: "iron_will",
+    name: "不屈の意志",
+    condition: "最長連続活動日数が30日以上になる",
+    unlockCondition: { metric: "longestStreak", operator: ">=", value: 30 },
+  },
+  {
+    type: "bookworm",
+    name: "知識の探求者",
+    condition: "累計学習時間が1000分以上になる",
+    unlockCondition: { metric: "studyMinutesTotal", operator: ">=", value: 1000 },
+  },
+  {
+    type: "certified_hunter",
+    name: "資格ハンター",
+    condition: "資格に3件以上合格する",
+    unlockCondition: { metric: "qualificationsPassedCount", operator: ">=", value: 3 },
+  },
+  {
+    type: "mission_ace",
+    name: "ミッションの達人",
+    condition: "ミッション累計達成数が30件以上になる",
+    unlockCondition: { metric: "missionsClaimedTotal", operator: ">=", value: 30 },
+  },
+  {
+    type: "founding_ruler",
+    name: "建国の王",
+    condition: "村が国(最終形態)まで発展する",
+    unlockCondition: { metric: "villageTier", operator: ">=", value: 6 },
   },
 ];
 

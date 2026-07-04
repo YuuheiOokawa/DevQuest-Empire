@@ -228,10 +228,11 @@ model Quest {
 }
 
 model AchievementMaster {
-  id        String @id @default(cuid())
-  type      String @unique
-  name      String
-  condition String
+  id              String @id @default(cuid())
+  type            String @unique
+  name            String
+  condition       String
+  unlockCondition Json? // null の場合はコード側の特殊イベント判定(例: first_sync)を使う
 
   playerAchievements PlayerAchievement[]
 }

@@ -1,21 +1,19 @@
-import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import {
+  evaluateUnlockCondition,
+  type UnlockMetrics,
+} from "@/lib/game/unlockConditions";
 
-// 称号はレベルに応じて自動アンロックする(建物・実績と同じ条件式パターン)
-
-const unlockConditionSchema = z.object({
-  metric: z.literal("level"),
-  operator: z.literal(">="),
-  value: z.number(),
-});
+// 称号は指標(レベル・ストリーク・学習時間・資格・村の発展段階など)に応じて
+// 自動アンロックする(建物・実績と同じ条件式パターン)。
 
 /**
- * レベルに応じて未アンロックの称号をアンロックする。
+ * 現在の指標に応じて未アンロックの称号をアンロックする。
  * 戻り値は新たにアンロックされた称号名の一覧。
  */
 export async function unlockTitles(
   playerId: string,
-  level: number
+  metrics: UnlockMetrics
 ): Promise<string[]> {
   const [allTitles, existingUnlocks] = await Promise.all([
     prisma.titleMaster.findMany(),
@@ -30,16 +28,12 @@ export async function unlockTitles(
 
   for (const title of allTitles) {
     if (unlockedIds.has(title.id)) continue;
+    if (!evaluateUnlockCondition(metrics, title.unlockCondition)) continue;
 
-    const condition = unlockConditionSchema.safeParse(title.unlockCondition);
-    if (!condition.success) continue;
-
-    if (level >= condition.data.value) {
-      await prisma.playerTitle.create({
-        data: { playerId, titleMasterId: title.id },
-      });
-      newlyUnlocked.push(title.name);
-    }
+    await prisma.playerTitle.create({
+      data: { playerId, titleMasterId: title.id },
+    });
+    newlyUnlocked.push(title.name);
   }
 
   return newlyUnlocked;

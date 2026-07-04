@@ -2,8 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { countMetricSince, type PeriodMetric } from "@/lib/game/metrics";
 import { recalcLevel } from "@/lib/game/exp";
 import { updateVillageBuildings, formatBuildingUpdate } from "@/lib/game/buildings";
-import { unlockAchievements } from "@/lib/game/achievements";
-import { unlockTitles } from "@/lib/game/titles";
+import { unlockProgressionRewards } from "@/lib/game/progression";
 
 function todayPeriodStart(): Date {
   return new Date(new Date().toISOString().slice(0, 10));
@@ -165,8 +164,11 @@ export async function claimMission(
     : { newlyUnlocked: [], leveledUp: [], tierUpTo: null };
   const { unlockedBuildings, leveledUpBuildings, tierUpTo } =
     formatBuildingUpdate(buildingResult);
-  const unlockedAchievements = await unlockAchievements(userId, false);
-  const unlockedTitles = await unlockTitles(player.id, level);
+  const { unlockedAchievements, unlockedTitles } = await unlockProgressionRewards(
+    userId,
+    player.id,
+    level
+  );
 
   return {
     expGained: mission.expReward,

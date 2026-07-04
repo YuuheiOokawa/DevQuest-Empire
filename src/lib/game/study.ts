@@ -1,8 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { recalcLevel } from "@/lib/game/exp";
 import { updateVillageBuildings, formatBuildingUpdate } from "@/lib/game/buildings";
-import { unlockAchievements } from "@/lib/game/achievements";
-import { unlockTitles } from "@/lib/game/titles";
+import { unlockProgressionRewards } from "@/lib/game/progression";
 
 // 10分あたり5EXP(端数切り捨て)。GitHub活動と同様、自己申告制で悪用対策は無い。
 function studyExp(minutes: number): number {
@@ -68,8 +67,11 @@ export async function recordStudyLog(
     : { newlyUnlocked: [], leveledUp: [], tierUpTo: null };
   const { unlockedBuildings, leveledUpBuildings, tierUpTo } =
     formatBuildingUpdate(buildingResult);
-  const unlockedAchievements = await unlockAchievements(userId, false);
-  const unlockedTitles = await unlockTitles(player.id, level);
+  const { unlockedAchievements, unlockedTitles } = await unlockProgressionRewards(
+    userId,
+    player.id,
+    level
+  );
 
   return {
     expGained,
