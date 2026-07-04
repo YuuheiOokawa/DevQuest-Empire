@@ -9,6 +9,8 @@ import {
 } from "@/lib/game/buildings";
 import { isDebugAdmin } from "@/lib/game/debugAdmin";
 import { getNpcRoster } from "@/lib/game/npcRoster";
+import { buildWorldGrowthLog } from "@/lib/game/worldGrowthLog";
+import { getOrCreateTodaysQuest } from "@/lib/game/quest";
 import { AppShell } from "@/components/layout/AppShell";
 import { WorldScene } from "@/components/world/WorldScene";
 import { WorldTierStatus } from "@/components/world/WorldTierStatus";
@@ -26,22 +28,50 @@ export default async function WorldPage() {
   }
 
   const isAdmin = isDebugAdmin(session.user.email);
-  const [buildings, settlement, debugPlayer] = await Promise.all([
-    getVillageBuildingsView(session.user.id),
-    getSettlementInfo(session.user.id),
-    isAdmin
-      ? prisma.player.findUnique({
-          where: { userId: session.user.id },
-          select: { debugTierOverride: true },
-        })
-      : null,
-  ]);
+  const [buildings, settlement, debugPlayer, player, firstSyncedRepo, todaysQuest] =
+    await Promise.all([
+      getVillageBuildingsView(session.user.id),
+      getSettlementInfo(session.user.id),
+      isAdmin
+        ? prisma.player.findUnique({
+            where: { userId: session.user.id },
+            select: { debugTierOverride: true },
+          })
+        : null,
+      prisma.player.findUnique({
+        where: { userId: session.user.id },
+        select: { lastLoginBonusAt: true },
+      }),
+      prisma.githubRepository.findFirst({
+        where: { userId: session.user.id, syncEnabled: true },
+        orderBy: { createdAt: "asc" },
+        select: { createdAt: true },
+      }),
+      getOrCreateTodaysQuest(session.user.id),
+    ]);
   const { season, eventTheme } = getSeasonalDefaults(new Date());
   const score = buildings ? getVillageScore(buildings) : null;
   const backgroundClass = settlement
     ? (TIER_PAGE_BACKGROUND[settlement.tier] ?? "")
     : "";
   const npcRoster = settlement ? getNpcRoster(settlement.tier) : [];
+  const growthLog = buildings
+    ? buildWorldGrowthLog({
+        buildingUnlocks: buildings
+          .filter((b) => b.unlocked && b.unlockedAt)
+          .map((b) => ({
+            type: b.type,
+            name: b.name,
+            unlockedAt: b.unlockedAt as Date,
+          })),
+        firstSyncedAt: firstSyncedRepo?.createdAt ?? null,
+        lastLoginBonusAt: player?.lastLoginBonusAt ?? null,
+        todaysQuestCompletedAt:
+          todaysQuest.status === "completed" && todaysQuest.completedAt
+            ? todaysQuest.completedAt
+            : null,
+      })
+    : [];
 
   return (
     <AppShell>
@@ -93,7 +123,7 @@ export default async function WorldPage() {
 
               <NpcSection roster={npcRoster} />
 
-              <WorldGrowthLog buildings={buildings} />
+              <WorldGrowthLog entries={growthLog} />
             </>
           )}
         </main>

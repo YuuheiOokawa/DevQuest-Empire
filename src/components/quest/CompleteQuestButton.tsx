@@ -4,9 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { formatGrowthNotifications } from "@/lib/game/notifications";
+import { useLevelUp } from "@/components/levelup/LevelUpContext";
 
 export function CompleteQuestButton({ questId }: { questId: string }) {
   const router = useRouter();
+  const reportGrowthResult = useLevelUp();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<string[]>([]);
@@ -24,6 +26,7 @@ export function CompleteQuestButton({ questId }: { questId: string }) {
         return;
       }
       setNotifications(formatGrowthNotifications(result));
+      reportGrowthResult(result);
       router.refresh();
     } finally {
       setPending(false);

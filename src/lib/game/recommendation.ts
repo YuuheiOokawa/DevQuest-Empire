@@ -1,4 +1,13 @@
-import { Scroll, Target, Gift, RefreshCw, Castle, type LucideIcon } from "lucide-react";
+import {
+  Scroll,
+  Target,
+  Gift,
+  RefreshCw,
+  Castle,
+  GraduationCap,
+  TrendingUp,
+  type LucideIcon,
+} from "lucide-react";
 
 export type RecommendedAction = {
   title: string;
@@ -11,13 +20,19 @@ export type RecommendationInput = {
   questCompleted: boolean;
   claimableMissionCount: number;
   loginBonusClaimedToday: boolean;
-  last7DaysCommits: number;
+  hasSyncedRepository: boolean;
+  hasQualificationInProgress: boolean;
+  currentExp: number;
+  expToNextLevel: number;
   nextTierName: string | null;
 };
 
+const NEAR_LEVEL_UP_RATE = 0.2;
+
 /**
- * ホーム画面の「次にやるべきおすすめアクション」を1件だけ選ぶ。
- * 優先度: 今日のクエスト > 受取可能なミッション > ログインボーナス > GitHub同期 > 村の発展。
+ * ホーム画面の「今日のおすすめアクション」を1件だけ選ぶ。
+ * 優先度: 今日のクエスト > レベルアップ目前 > 受取可能なミッション >
+ *         GitHub未同期 > ログインボーナス > 資格未設定 > 村の発展。
  */
 export function getRecommendedAction(input: RecommendationInput): RecommendedAction {
   if (!input.questCompleted) {
@@ -26,6 +41,19 @@ export function getRecommendedAction(input: RecommendationInput): RecommendedAct
       description: "AIが提案するクエストに挑戦してEXPを獲得しましょう。",
       href: "/adventure",
       icon: Scroll,
+    };
+  }
+
+  const remainingExp = input.expToNextLevel - input.currentExp;
+  if (
+    input.expToNextLevel > 0 &&
+    remainingExp <= input.expToNextLevel * NEAR_LEVEL_UP_RATE
+  ) {
+    return {
+      title: "あと少しでレベルアップです!",
+      description: `あと${remainingExp}EXPで次のレベルに到達します。もうひと頑張りしましょう。`,
+      href: "/adventure",
+      icon: TrendingUp,
     };
   }
 
@@ -38,6 +66,15 @@ export function getRecommendedAction(input: RecommendationInput): RecommendedAct
     };
   }
 
+  if (!input.hasSyncedRepository) {
+    return {
+      title: "GitHub活動を同期しましょう",
+      description: "リポジトリを連携すると、活動がEXPや村の発展に反映されます。",
+      href: "/",
+      icon: RefreshCw,
+    };
+  }
+
   if (!input.loginBonusClaimedToday) {
     return {
       title: "ログインボーナスを受け取ろう",
@@ -47,12 +84,12 @@ export function getRecommendedAction(input: RecommendationInput): RecommendedAct
     };
   }
 
-  if (input.last7DaysCommits === 0) {
+  if (!input.hasQualificationInProgress) {
     return {
-      title: "GitHubを同期してみよう",
-      description: "最近の活動が同期されていません。同期してEXPを獲得しましょう。",
-      href: "/",
-      icon: RefreshCw,
+      title: "次に目指す資格を設定しましょう",
+      description: "資格に挑戦すると合格時に大きなEXPを獲得できます。",
+      href: "/player",
+      icon: GraduationCap,
     };
   }
 
@@ -60,7 +97,7 @@ export function getRecommendedAction(input: RecommendationInput): RecommendedAct
     title: input.nextTierName
       ? `村を${input.nextTierName}へ発展させよう`
       : "ワールドの状況を確認しよう",
-    description: "建物の成長状況を確認してみましょう。",
+    description: "ミッションをこなして村の発展を進めましょう。",
     href: "/world",
     icon: Castle,
   };

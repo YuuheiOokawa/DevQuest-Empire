@@ -1,6 +1,16 @@
 import { redirect } from "next/navigation";
-import { Swords, Skull } from "lucide-react";
+import {
+  Swords,
+  Skull,
+  Sun,
+  CalendarCheck,
+  CalendarDays,
+  CalendarRange,
+  PartyPopper,
+} from "lucide-react";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { recalcLevel } from "@/lib/game/exp";
 import { getOrCreateTodaysQuest, getRecentQuestHistory } from "@/lib/game/quest";
 import { getMissionsView } from "@/lib/game/missions";
 import { getSeasonalDefaults } from "@/lib/game/season";
@@ -11,6 +21,10 @@ import { WeeklyMissionSection } from "@/components/adventure/WeeklyMissionSectio
 import { MonthlyMissionSection } from "@/components/adventure/MonthlyMissionSection";
 import { EventSection } from "@/components/adventure/EventSection";
 import { AdventureHistorySection } from "@/components/adventure/AdventureHistorySection";
+import {
+  AdventureCategoryTabs,
+  type AdventureCategory,
+} from "@/components/adventure/AdventureCategoryTabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -21,16 +35,83 @@ export default async function AdventurePage() {
   }
   const userId = session.user.id;
 
-  const [todaysQuest, history, missions] = await Promise.all([
+  const [player, todaysQuest, history, missions] = await Promise.all([
+    prisma.player.findUniqueOrThrow({ where: { userId } }),
     getOrCreateTodaysQuest(userId),
     getRecentQuestHistory(userId),
     getMissionsView(userId),
   ]);
+  const { level } = recalcLevel(player.exp);
   const { eventTheme } = getSeasonalDefaults(new Date());
   const pastQuests = history.filter((q) => q.id !== todaysQuest.id);
 
+  const categories: AdventureCategory[] = [
+    {
+      id: "today",
+      label: (
+        <>
+          <Sun className="mr-1 inline size-4" />
+          今日
+        </>
+      ),
+      content: <TodayQuestSection quest={todaysQuest} />,
+    },
+    {
+      id: "daily",
+      label: (
+        <>
+          <CalendarCheck className="mr-1 inline size-4" />
+          デイリー
+        </>
+      ),
+      content: (
+        <DailyMissionSection
+          missions={missions?.filter((m) => m.period === "daily") ?? []}
+        />
+      ),
+    },
+    {
+      id: "weekly",
+      label: (
+        <>
+          <CalendarDays className="mr-1 inline size-4" />
+          ウィークリー
+        </>
+      ),
+      content: (
+        <WeeklyMissionSection
+          missions={missions?.filter((m) => m.period === "weekly") ?? []}
+        />
+      ),
+    },
+    {
+      id: "monthly",
+      label: (
+        <>
+          <CalendarRange className="mr-1 inline size-4" />
+          マンスリー
+        </>
+      ),
+      content: (
+        <MonthlyMissionSection
+          missions={missions?.filter((m) => m.period === "monthly") ?? []}
+        />
+      ),
+    },
+    {
+      id: "event",
+      label: (
+        <>
+          <PartyPopper className="mr-1 inline size-4" />
+          イベント
+        </>
+      ),
+      content: <EventSection eventTheme={eventTheme} />,
+    },
+  ];
+
   return (
-    <AppShell>
+    <AppShell initialLevel={level}>
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-4 py-10">
         <div className="space-y-1">
           <h1 className="flex items-center gap-2 text-2xl font-bold">
@@ -42,27 +123,13 @@ export default async function AdventurePage() {
           </p>
         </div>
 
-        <TodayQuestSection quest={todaysQuest} />
-
         {!missions ? (
           <p className="text-destructive text-sm">
             ミッション情報を取得できませんでした。
           </p>
         ) : (
-          <>
-            <DailyMissionSection
-              missions={missions.filter((m) => m.period === "daily")}
-            />
-            <WeeklyMissionSection
-              missions={missions.filter((m) => m.period === "weekly")}
-            />
-            <MonthlyMissionSection
-              missions={missions.filter((m) => m.period === "monthly")}
-            />
-          </>
+          <AdventureCategoryTabs categories={categories} />
         )}
-
-        <EventSection eventTheme={eventTheme} />
 
         <div className="space-y-3">
           <h2 className="flex items-center gap-1.5 text-lg font-semibold">

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, User, Castle, Swords, Bot } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const TABS: { href: string; label: string; icon: LucideIcon; match: (path: string) => boolean }[] = [
   { href: "/", label: "ホーム", icon: Home, match: (p) => p === "/" || p === "/dashboard" },
@@ -28,23 +29,31 @@ export function FooterNav() {
             <Link
               key={tab.href}
               href={tab.href}
-              className="flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 transition-colors"
+              aria-current={active ? "page" : undefined}
+              className="relative flex min-h-16 flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors active:opacity-80"
             >
               <span
-                className={
+                aria-hidden
+                className={cn(
+                  "absolute top-0 h-0.5 w-8 rounded-full transition-all",
+                  active ? "bg-emerald-400" : "bg-transparent"
+                )}
+              />
+              <span
+                className={cn(
+                  "flex size-9 items-center justify-center rounded-full transition-all",
                   active
-                    ? "flex items-center justify-center rounded-full bg-emerald-400/15 px-3 py-1 text-emerald-400"
-                    : "flex items-center justify-center px-3 py-1 text-neutral-400"
-                }
+                    ? "scale-105 bg-emerald-400/15 text-emerald-400"
+                    : "text-neutral-400"
+                )}
               >
                 <tab.icon className="size-5" />
               </span>
               <span
-                className={
-                  active
-                    ? "text-[11px] font-semibold text-emerald-400"
-                    : "text-[11px] text-neutral-500"
-                }
+                className={cn(
+                  "text-[11px] leading-none font-medium transition-colors",
+                  active ? "text-emerald-400" : "text-neutral-500"
+                )}
               >
                 {tab.label}
               </span>

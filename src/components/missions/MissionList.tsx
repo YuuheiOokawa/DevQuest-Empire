@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { missionIcon } from "@/lib/game/rewardIcons";
 import { formatGrowthNotifications } from "@/lib/game/notifications";
+import { useLevelUp } from "@/components/levelup/LevelUpContext";
 
 export type MissionItem = {
   id: string;
@@ -31,6 +32,7 @@ export function MissionList({
   initialMissions: MissionItem[];
 }) {
   const router = useRouter();
+  const reportGrowthResult = useLevelUp();
   const [missions, setMissions] = useState(initialMissions);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +59,7 @@ export function MissionList({
         ...prev,
         [missionId]: formatGrowthNotifications(result),
       }));
+      reportGrowthResult(result);
       router.refresh();
     } finally {
       setPendingId(null);

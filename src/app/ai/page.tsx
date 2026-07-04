@@ -12,7 +12,7 @@ import {
   getWorldAdvice,
 } from "@/lib/ai/suggestions";
 import { AppShell } from "@/components/layout/AppShell";
-import { AiAssistantCard } from "@/components/ai/AiAssistantCard";
+import { AiAssistantPanel } from "@/components/ai/AiAssistantPanel";
 import { AiEmployeeCard } from "@/components/ai/AiEmployeeCard";
 import { GithubAnalysisCard } from "@/components/ai/GithubAnalysisCard";
 import { LearningSuggestionCard } from "@/components/ai/LearningSuggestionCard";
@@ -52,12 +52,22 @@ export default async function AiPage() {
           </p>
         </div>
 
-        <AiAssistantCard />
+        <AiAssistantPanel
+          playerName={player.name}
+          githubComment={activity.aiComment}
+          learningSuggestion={learningSuggestion}
+          certificationSuggestion={`${certificationSuggestion.title} — ${certificationSuggestion.description}`}
+          worldAdvice={worldAdvice}
+        />
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <GithubAnalysisCard activity={activity} />
+          <LearningSuggestionCard suggestion={learningSuggestion} />
+          <CertificationSuggestionCard suggestion={certificationSuggestion} />
+          <WorldAdviceCard advice={worldAdvice} />
+        </div>
+
         <AiEmployeeCard />
-        <GithubAnalysisCard activity={activity} />
-        <LearningSuggestionCard suggestion={learningSuggestion} />
-        <CertificationSuggestionCard suggestion={certificationSuggestion} />
-        <WorldAdviceCard advice={worldAdvice} />
       </main>
     </AppShell>
   );

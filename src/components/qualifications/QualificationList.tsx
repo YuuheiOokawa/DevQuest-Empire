@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatGrowthNotifications } from "@/lib/game/notifications";
+import { useLevelUp } from "@/components/levelup/LevelUpContext";
 
 export type QualificationItem = {
   id: string;
@@ -29,6 +30,7 @@ export function QualificationList({
   initialQualifications: QualificationItem[];
 }) {
   const router = useRouter();
+  const reportGrowthResult = useLevelUp();
   const [qualifications, setQualifications] = useState(initialQualifications);
   const [planningId, setPlanningId] = useState<string | null>(null);
   const [examDateInput, setExamDateInput] = useState("");
@@ -118,6 +120,7 @@ export function QualificationList({
         ...prev,
         [qualificationId]: formatGrowthNotifications(result),
       }));
+      reportGrowthResult(result);
       router.refresh();
     } finally {
       setPendingId(null);

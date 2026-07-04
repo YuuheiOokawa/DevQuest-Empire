@@ -15,6 +15,7 @@ import { getOrCreateTodaysQuest } from "@/lib/game/quest";
 import { getLoginBonusStatus } from "@/lib/game/loginBonus";
 import { getEquippedTitleName } from "@/lib/game/titles";
 import { getMissionsView } from "@/lib/game/missions";
+import { getQualificationsView } from "@/lib/game/qualifications";
 import { getRecommendedAction } from "@/lib/game/recommendation";
 import { AppShell } from "@/components/layout/AppShell";
 import {
@@ -45,6 +46,8 @@ export default async function HomePage() {
     equippedTitle,
     missions,
     settlement,
+    qualifications,
+    syncedRepositoryCount,
   ] = await Promise.all([
     getActivitySummary(userId),
     getVillageBuildingsView(userId),
@@ -53,6 +56,8 @@ export default async function HomePage() {
     getEquippedTitleName(userId),
     getMissionsView(userId),
     getSettlementInfo(userId),
+    getQualificationsView(userId),
+    prisma.githubRepository.count({ where: { userId, syncEnabled: true } }),
   ]);
 
   const claimableMissionCount = missions?.filter((m) => m.claimable).length ?? 0;
@@ -66,12 +71,16 @@ export default async function HomePage() {
     questCompleted: todaysQuest.status === "completed",
     claimableMissionCount,
     loginBonusClaimedToday: loginBonus.claimedToday,
-    last7DaysCommits: activity.last7Days.commits,
+    hasSyncedRepository: syncedRepositoryCount > 0,
+    hasQualificationInProgress:
+      qualifications?.some((q) => q.status === "planning") ?? false,
+    currentExp,
+    expToNextLevel,
     nextTierName: settlement?.nextTierName ?? null,
   });
 
   return (
-    <AppShell>
+    <AppShell initialLevel={level}>
       <div className={backgroundClass}>
         <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8">
           <Card>

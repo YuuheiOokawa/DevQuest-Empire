@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatGrowthNotifications } from "@/lib/game/notifications";
+import { useLevelUp } from "@/components/levelup/LevelUpContext";
 
 export function SyncButton() {
   const router = useRouter();
+  const reportGrowthResult = useLevelUp();
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<string[]>([]);
@@ -30,6 +32,7 @@ export function SyncButton() {
         `Commit+${result.newCommits} Issue+${result.newIssues} PR+${result.newPullRequests} (獲得EXP: ${result.expGained})`
       );
       setNotifications(formatGrowthNotifications(result));
+      reportGrowthResult(result);
       router.refresh();
     } catch {
       setIsError(true);
