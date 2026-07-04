@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
 import { Lock, Sparkles, Crown } from "lucide-react";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import {
   getVillageBuildingsView,
   getVillageScore,
   getSettlementInfo,
 } from "@/lib/game/buildings";
+import { isDebugAdmin } from "@/lib/game/debugAdmin";
 import { AppNav } from "@/components/layout/AppNav";
 import { BuildingIcon } from "@/components/village/BuildingIcon";
 import { WorldScene } from "@/components/world/WorldScene";
@@ -14,6 +16,7 @@ import {
   SettlementBadge,
   TIER_PAGE_BACKGROUND,
 } from "@/components/village/SettlementBadge";
+import { DebugTierPanel } from "@/components/debug/DebugTierPanel";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -36,9 +39,16 @@ export default async function VillagePage() {
     redirect("/login");
   }
 
-  const [buildings, settlement] = await Promise.all([
+  const isAdmin = isDebugAdmin(session.user.email);
+  const [buildings, settlement, debugPlayer] = await Promise.all([
     getVillageBuildingsView(session.user.id),
     getSettlementInfo(session.user.id),
+    isAdmin
+      ? prisma.player.findUnique({
+          where: { userId: session.user.id },
+          select: { debugTierOverride: true },
+        })
+      : null,
   ]);
   const { season, eventTheme } = getSeasonalDefaults(new Date());
   const score = buildings ? getVillageScore(buildings) : null;
@@ -70,6 +80,13 @@ export default async function VillagePage() {
               GitHub活動・学習・資格・ミッションの積み重ねで、村はやがて国へと発展します。
             </p>
           </div>
+
+          {isAdmin && settlement && (
+            <DebugTierPanel
+              currentTier={settlement.tier}
+              isOverridden={debugPlayer?.debugTierOverride != null}
+            />
+          )}
 
           {!buildings || !score || !settlement ? (
             <p className="text-destructive text-sm">
@@ -197,7 +214,9 @@ export default async function VillagePage() {
                                   )}
                                 </div>
                                 <p className="text-muted-foreground text-sm">
-                                  {building.description}
+                                  {building.unlocked
+                                    ? building.flavorText
+                                    : building.description}
                                 </p>
                                 {!isMaxed && building.nextThreshold !== null && (
                                   <div className="space-y-0.5">

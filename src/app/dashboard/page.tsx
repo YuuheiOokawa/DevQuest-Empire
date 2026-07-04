@@ -28,11 +28,24 @@ import { getMissionsView } from "@/lib/game/missions";
 import { getStudySummary } from "@/lib/game/study";
 import { getQualificationsView } from "@/lib/game/qualifications";
 import { AppNav } from "@/components/layout/AppNav";
-import { SettlementBadge } from "@/components/village/SettlementBadge";
+import {
+  SettlementBadge,
+  TIER_PAGE_BACKGROUND,
+} from "@/components/village/SettlementBadge";
 import { SyncButton } from "@/components/github/SyncButton";
 import { LoginBonusCard } from "@/components/login-bonus/LoginBonusCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+
+// 各機能タイルのアイコン背景色。実績・称号ページのレアリティ配色や
+// 建物アイコンの配色と同じ「機能ごとに固有の色を持たせる」考え方を踏襲する。
+const STAT_TILE_COLOR = {
+  village: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400",
+  achievements: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400",
+  titles: "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-400",
+  study: "bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-400",
+  qualifications: "bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-400",
+} as const;
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -79,163 +92,190 @@ export default async function DashboardPage() {
     qualifications?.filter((q) => q.status === "passed").length ?? 0;
   const villageScore = buildings ? getVillageScore(buildings) : null;
   const companyRank = getCompanyRank(level);
+  const backgroundClass = settlement
+    ? (TIER_PAGE_BACKGROUND[settlement.tier] ?? "")
+    : "";
 
   return (
     <>
       <AppNav />
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8">
-        <div className="flex items-center justify-between gap-4">
-          <Link href="/profile" className="flex min-w-0 items-center gap-3">
-            {settlement && <SettlementBadge tier={settlement.tier} />}
-            <div className="min-w-0">
-              {equippedTitle && (
-                <p className="text-primary truncate text-xs font-medium">
-                  {equippedTitle}
-                </p>
-              )}
-              <h1 className="truncate text-2xl font-bold">{player.name}</h1>
-              <p className="text-muted-foreground text-sm">
-                {settlement?.roleName ?? "村の青年"} ・ Lv.{level} ・{" "}
-                {companyRank.rank}
-              </p>
-            </div>
-          </Link>
-          <SyncButton />
-        </div>
-
-        <div className="space-y-1">
-          <Progress value={(currentExp / expToNextLevel) * 100} />
-          <p className="text-muted-foreground text-right text-xs">
-            {currentExp} / {expToNextLevel} EXP
-          </p>
-        </div>
-
-        <LoginBonusCard
-          claimedToday={loginBonus.claimedToday}
-          streak={loginBonus.streak}
-          todayReward={loginBonus.todayReward}
-        />
-
-        <Card>
-          <CardContent className="flex flex-col gap-2 py-4">
-            <h2 className="flex items-center gap-1.5 font-semibold">
-              <TrendingUp className="text-primary size-4" />
-              直近7日間の活動
-            </h2>
-            <div className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-sm">
-              <span>Commit {activity.last7Days.commits}</span>
-              <span>Issue Close {activity.last7Days.issues}</span>
-              <span>PR Merge {activity.last7Days.prs}</span>
-            </div>
-            <p className="text-sm">{activity.aiComment}</p>
-          </CardContent>
-        </Card>
-
-        <Link href="/quest">
-          <Card className="hover:bg-accent transition-colors">
-            <CardContent className="flex items-center justify-between gap-4 py-4">
-              <div className="min-w-0">
-                <h2 className="flex items-center gap-1.5 font-semibold">
-                  <Scroll className="text-primary size-4 shrink-0" />
-                  今日のクエスト
-                </h2>
-                <p className="text-muted-foreground truncate text-sm">
-                  {todaysQuest.title}
-                </p>
-              </div>
-              <span className="text-muted-foreground shrink-0 text-sm">
-                {todaysQuest.status === "completed" ? "達成済み" : "未達成"}
-              </span>
+      <div className={backgroundClass}>
+        <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8">
+          <Card>
+            <CardContent className="flex items-center justify-between gap-4 py-5">
+              <Link href="/profile" className="flex min-w-0 items-center gap-3">
+                {settlement && <SettlementBadge tier={settlement.tier} size="lg" />}
+                <div className="min-w-0">
+                  {equippedTitle && (
+                    <p className="text-primary truncate text-xs font-medium">
+                      {equippedTitle}
+                    </p>
+                  )}
+                  <h1 className="truncate text-2xl font-bold">{player.name}</h1>
+                  <p className="text-muted-foreground text-sm">
+                    {settlement?.roleName ?? "村の青年"} ・ Lv.{level} ・{" "}
+                    {companyRank.rank}
+                  </p>
+                </div>
+              </Link>
+              <SyncButton />
             </CardContent>
           </Card>
-        </Link>
 
-        <Link href="/missions">
-          <Card className="hover:bg-accent transition-colors">
-            <CardContent className="flex items-center justify-between gap-4 py-4">
+          <div className="space-y-1">
+            <Progress value={(currentExp / expToNextLevel) * 100} />
+            <p className="text-muted-foreground text-right text-xs">
+              {currentExp} / {expToNextLevel} EXP
+            </p>
+          </div>
+
+          <LoginBonusCard
+            claimedToday={loginBonus.claimedToday}
+            streak={loginBonus.streak}
+            todayReward={loginBonus.todayReward}
+          />
+
+          <Card>
+            <CardContent className="flex flex-col gap-2 py-4">
               <h2 className="flex items-center gap-1.5 font-semibold">
-                <Target className="text-primary size-4" />
-                ミッション
+                <TrendingUp className="text-primary size-4" />
+                直近7日間の活動
               </h2>
-              <span className="text-muted-foreground shrink-0 text-sm">
-                {claimableMissionCount > 0
-                  ? `受け取り可能: ${claimableMissionCount}件`
-                  : `全${missions?.length ?? 0}件`}
-              </span>
+              <div className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                <span>Commit {activity.last7Days.commits}</span>
+                <span>Issue Close {activity.last7Days.issues}</span>
+                <span>PR Merge {activity.last7Days.prs}</span>
+              </div>
+              <p className="text-sm">{activity.aiComment}</p>
             </CardContent>
           </Card>
-        </Link>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Link href="/village">
+          <Link href="/quest">
             <Card className="hover:bg-accent transition-colors">
-              <CardContent className="py-4">
-                <h2 className="flex items-center gap-1.5 font-semibold">
-                  <Castle className="text-primary size-4" />
-                  村
-                </h2>
-                <p className="text-muted-foreground text-sm">
-                  {villageScore
-                    ? `ランク${villageScore.rank} (${villageScore.totalLevel}/${villageScore.maxTotalLevel})`
-                    : "-"}
-                </p>
+              <CardContent className="flex items-center justify-between gap-4 py-4">
+                <div className="min-w-0">
+                  <h2 className="flex items-center gap-1.5 font-semibold">
+                    <Scroll className="text-primary size-4 shrink-0" />
+                    今日のクエスト
+                  </h2>
+                  <p className="text-muted-foreground truncate text-sm">
+                    {todaysQuest.title}
+                  </p>
+                </div>
+                <span className="text-muted-foreground shrink-0 text-sm">
+                  {todaysQuest.status === "completed" ? "達成済み" : "未達成"}
+                </span>
               </CardContent>
             </Card>
           </Link>
-          <Link href="/achievements">
+
+          <Link href="/missions">
             <Card className="hover:bg-accent transition-colors">
-              <CardContent className="py-4">
+              <CardContent className="flex items-center justify-between gap-4 py-4">
                 <h2 className="flex items-center gap-1.5 font-semibold">
-                  <Trophy className="text-primary size-4" />
-                  実績
+                  <Target className="text-primary size-4" />
+                  ミッション
                 </h2>
-                <p className="text-muted-foreground text-sm">
-                  {unlockedAchievementCount} / {achievements?.length ?? 0} 達成
-                </p>
+                <span className="text-muted-foreground shrink-0 text-sm">
+                  {claimableMissionCount > 0
+                    ? `受け取り可能: ${claimableMissionCount}件`
+                    : `全${missions?.length ?? 0}件`}
+                </span>
               </CardContent>
             </Card>
           </Link>
-          <Link href="/titles">
-            <Card className="hover:bg-accent transition-colors">
-              <CardContent className="py-4">
-                <h2 className="flex items-center gap-1.5 font-semibold">
-                  <Award className="text-primary size-4" />
-                  称号
-                </h2>
-                <p className="text-muted-foreground text-sm">
-                  {unlockedTitleCount} / {titles?.length ?? 0} 解放
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
-          <Link href="/study">
-            <Card className="hover:bg-accent transition-colors">
-              <CardContent className="py-4">
-                <h2 className="flex items-center gap-1.5 font-semibold">
-                  <BookOpen className="text-primary size-4" />
-                  学習
-                </h2>
-                <p className="text-muted-foreground text-sm">
-                  累計{studySummary?.totalMinutes ?? 0}分
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
-          <Link href="/qualifications">
-            <Card className="hover:bg-accent transition-colors">
-              <CardContent className="py-4">
-                <h2 className="flex items-center gap-1.5 font-semibold">
-                  <GraduationCap className="text-primary size-4" />
-                  資格
-                </h2>
-                <p className="text-muted-foreground text-sm">
-                  {passedQualificationCount} / {qualifications?.length ?? 0} 合格
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
-        </div>
-      </main>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <Link href="/village">
+              <Card className="hover:bg-accent transition-colors">
+                <CardContent className="flex items-center gap-3 py-4">
+                  <div
+                    className={`flex size-10 shrink-0 items-center justify-center rounded-full ${STAT_TILE_COLOR.village}`}
+                  >
+                    <Castle className="size-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="font-semibold">村</h2>
+                    <p className="text-muted-foreground truncate text-sm">
+                      {villageScore
+                        ? `ランク${villageScore.rank} (${villageScore.totalLevel}/${villageScore.maxTotalLevel})`
+                        : "-"}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/achievements">
+              <Card className="hover:bg-accent transition-colors">
+                <CardContent className="flex items-center gap-3 py-4">
+                  <div
+                    className={`flex size-10 shrink-0 items-center justify-center rounded-full ${STAT_TILE_COLOR.achievements}`}
+                  >
+                    <Trophy className="size-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="font-semibold">実績</h2>
+                    <p className="text-muted-foreground truncate text-sm">
+                      {unlockedAchievementCount} / {achievements?.length ?? 0} 達成
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/titles">
+              <Card className="hover:bg-accent transition-colors">
+                <CardContent className="flex items-center gap-3 py-4">
+                  <div
+                    className={`flex size-10 shrink-0 items-center justify-center rounded-full ${STAT_TILE_COLOR.titles}`}
+                  >
+                    <Award className="size-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="font-semibold">称号</h2>
+                    <p className="text-muted-foreground truncate text-sm">
+                      {unlockedTitleCount} / {titles?.length ?? 0} 解放
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/study">
+              <Card className="hover:bg-accent transition-colors">
+                <CardContent className="flex items-center gap-3 py-4">
+                  <div
+                    className={`flex size-10 shrink-0 items-center justify-center rounded-full ${STAT_TILE_COLOR.study}`}
+                  >
+                    <BookOpen className="size-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="font-semibold">学習</h2>
+                    <p className="text-muted-foreground truncate text-sm">
+                      累計{studySummary?.totalMinutes ?? 0}分
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/qualifications">
+              <Card className="hover:bg-accent transition-colors">
+                <CardContent className="flex items-center gap-3 py-4">
+                  <div
+                    className={`flex size-10 shrink-0 items-center justify-center rounded-full ${STAT_TILE_COLOR.qualifications}`}
+                  >
+                    <GraduationCap className="size-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="font-semibold">資格</h2>
+                    <p className="text-muted-foreground truncate text-sm">
+                      {passedQualificationCount} / {qualifications?.length ?? 0} 合格
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </div>
+        </main>
+      </div>
     </>
   );
 }

@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { getTitlesView } from "@/lib/game/titles";
 import { AppNav } from "@/components/layout/AppNav";
 import { TitleList } from "@/components/titles/TitleList";
+import { Progress } from "@/components/ui/progress";
 
 export default async function TitlesPage() {
   const session = await auth();
@@ -12,6 +13,7 @@ export default async function TitlesPage() {
   }
 
   const titles = await getTitlesView(session.user.id);
+  const unlockedCount = titles?.filter((t) => t.unlocked).length ?? 0;
 
   return (
     <>
@@ -23,19 +25,31 @@ export default async function TitlesPage() {
             称号
           </h1>
           <p className="text-muted-foreground text-sm">
-            レベルアップで新しい称号が解放されます。装着する称号を選べます。
+            レベル・継続・学習・資格・村の発展で新しい称号が解放されます。装着する称号を選べます。
           </p>
         </div>
 
         {!titles ? (
           <p className="text-destructive text-sm">称号情報を取得できませんでした。</p>
         ) : (
-          <TitleList
-            initialTitles={titles.map((t) => ({
-              ...t,
-              unlockedAt: t.unlockedAt ? t.unlockedAt.toISOString() : null,
-            }))}
-          />
+          <>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium">称号コレクション</span>
+                <span className="text-muted-foreground">
+                  {unlockedCount} / {titles.length}
+                </span>
+              </div>
+              <Progress value={(unlockedCount / titles.length) * 100} />
+            </div>
+
+            <TitleList
+              initialTitles={titles.map((t) => ({
+                ...t,
+                unlockedAt: t.unlockedAt ? t.unlockedAt.toISOString() : null,
+              }))}
+            />
+          </>
         )}
       </main>
     </>

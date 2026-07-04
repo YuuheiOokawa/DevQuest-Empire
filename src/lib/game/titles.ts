@@ -39,11 +39,14 @@ export async function unlockTitles(
   return newlyUnlocked;
 }
 
+export type TitleRarity = "bronze" | "silver" | "gold" | "platinum";
+
 export type TitleView = {
   id: string;
   type: string;
   name: string;
   condition: string;
+  rarity: TitleRarity;
   unlocked: boolean;
   unlockedAt: Date | null;
   equipped: boolean;
@@ -69,6 +72,7 @@ export async function getTitlesView(userId: string): Promise<TitleView[] | null>
     type: title.type,
     name: title.name,
     condition: title.condition,
+    rarity: (title.rarity as TitleRarity) ?? "bronze",
     unlocked: unlockedMap.has(title.id),
     unlockedAt: unlockedMap.get(title.id) ?? null,
     equipped: player.equippedTitleId === title.id,

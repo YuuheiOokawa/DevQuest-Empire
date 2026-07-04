@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { CheckCircle2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { missionIcon } from "@/lib/game/rewardIcons";
 import { formatGrowthNotifications } from "@/lib/game/notifications";
 
 export type MissionItem = {
@@ -13,6 +15,7 @@ export type MissionItem = {
   name: string;
   description: string;
   period: string;
+  metric: string;
   progressValue: number;
   targetValue: number;
   expReward: number;
@@ -62,52 +65,97 @@ export function MissionList({
 
   if (missions.length === 0) return null;
 
+  const claimedCount = missions.filter((m) => m.claimed).length;
+
   return (
     <div className="space-y-2">
-      <h2 className="text-lg font-semibold">{title}</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">{title}</h2>
+        <span className="text-muted-foreground text-xs">
+          {claimedCount} / {missions.length} 受取済み
+        </span>
+      </div>
       {error && <p className="text-destructive text-sm">{error}</p>}
       <div className="flex flex-col gap-2">
-        {missions.map((mission) => (
-          <Card key={mission.id}>
-            <CardContent className="flex flex-col gap-2 py-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="min-w-0 truncate font-medium">
-                  {mission.name}
-                </span>
-                <Badge variant="secondary" className="shrink-0">
-                  +{mission.expReward}EXP
-                </Badge>
-              </div>
-              <p className="text-muted-foreground text-sm">
-                {mission.description}
-              </p>
-              <Progress
-                value={(mission.progressValue / mission.targetValue) * 100}
-              />
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-muted-foreground text-xs">
-                  {mission.progressValue} / {mission.targetValue}
-                </span>
-                {mission.claimed ? (
-                  <Badge>受取済み</Badge>
-                ) : mission.claimable ? (
-                  <Button
-                    size="sm"
-                    disabled={pendingId === mission.id}
-                    onClick={() => handleClaim(mission.id)}
+        {missions.map((mission) => {
+          const Icon = missionIcon(mission.metric);
+          return (
+            <Card
+              key={mission.id}
+              className={
+                mission.claimed
+                  ? "opacity-60"
+                  : mission.claimable
+                    ? "ring-2 ring-amber-400/70 shadow-md shadow-amber-500/10"
+                    : ""
+              }
+            >
+              <CardContent className="flex flex-col gap-2 py-3">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={
+                      mission.claimed
+                        ? "bg-muted text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-full"
+                        : "bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-full"
+                    }
                   >
-                    受け取る
-                  </Button>
-                ) : null}
-              </div>
-              {notifications[mission.id]?.map((line) => (
-                <p key={line} className="text-primary text-xs font-medium">
-                  {line}
-                </p>
-              ))}
-            </CardContent>
-          </Card>
-        ))}
+                    {mission.claimed ? (
+                      <CheckCircle2 className="size-4" />
+                    ) : (
+                      <Icon className="size-4" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="min-w-0 truncate font-medium">
+                        {mission.name}
+                      </span>
+                      <Badge variant="secondary" className="shrink-0">
+                        +{mission.expReward}EXP
+                      </Badge>
+                    </div>
+                    <p className="text-muted-foreground text-sm">
+                      {mission.description}
+                    </p>
+                  </div>
+                </div>
+                <Progress
+                  value={(mission.progressValue / mission.targetValue) * 100}
+                  className={
+                    mission.claimable
+                      ? "[&_[data-slot=progress-indicator]]:bg-amber-500"
+                      : ""
+                  }
+                />
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-muted-foreground text-xs">
+                    {mission.progressValue} / {mission.targetValue}
+                  </span>
+                  {mission.claimed ? (
+                    <Badge className="gap-1">
+                      <CheckCircle2 className="size-3" />
+                      受取済み
+                    </Badge>
+                  ) : mission.claimable ? (
+                    <Button
+                      size="sm"
+                      className="bg-amber-500 text-white hover:bg-amber-600"
+                      disabled={pendingId === mission.id}
+                      onClick={() => handleClaim(mission.id)}
+                    >
+                      受け取る
+                    </Button>
+                  ) : null}
+                </div>
+                {notifications[mission.id]?.map((line) => (
+                  <p key={line} className="text-primary text-xs font-medium">
+                    {line}
+                  </p>
+                ))}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

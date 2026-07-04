@@ -104,10 +104,13 @@ export async function unlockAchievements(
   return newlyUnlocked;
 }
 
+export type AchievementRarity = "bronze" | "silver" | "gold" | "platinum";
+
 export type AchievementView = {
   type: string;
   name: string;
   condition: string;
+  rarity: AchievementRarity;
   unlocked: boolean;
   unlockedAt: Date | null;
 };
@@ -132,6 +135,7 @@ export async function getAchievementsView(
     type: achievement.type,
     name: achievement.name,
     condition: achievement.condition,
+    rarity: (achievement.rarity as AchievementRarity) ?? "bronze",
     unlocked: unlockedMap.has(achievement.id),
     unlockedAt: unlockedMap.get(achievement.id) ?? null,
   }));

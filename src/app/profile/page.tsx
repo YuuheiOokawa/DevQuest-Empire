@@ -24,10 +24,22 @@ import { getMissionsView } from "@/lib/game/missions";
 import { getStudySummary } from "@/lib/game/study";
 import { getQualificationsView } from "@/lib/game/qualifications";
 import { AppNav } from "@/components/layout/AppNav";
-import { SettlementBadge } from "@/components/village/SettlementBadge";
+import {
+  SettlementBadge,
+  TIER_PAGE_BACKGROUND,
+} from "@/components/village/SettlementBadge";
 import { RankBadge } from "@/components/village/RankBadge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+
+// ダッシュボードの機能タイルと同じ配色ルールに揃える。
+const STAT_TILE_COLOR = {
+  achievements: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400",
+  titles: "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-400",
+  missions: "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400",
+  study: "bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-400",
+  qualifications: "bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-400",
+} as const;
 
 export default async function ProfilePage() {
   const session = await auth();
@@ -67,33 +79,43 @@ export default async function ProfilePage() {
       icon: Trophy,
       label: "実績",
       value: `${achievements?.filter((a) => a.unlocked).length ?? 0} / ${achievements?.length ?? 0}`,
+      color: STAT_TILE_COLOR.achievements,
     },
     {
       icon: Award,
       label: "称号",
       value: `${titles?.filter((t) => t.unlocked).length ?? 0} / ${titles?.length ?? 0}`,
+      color: STAT_TILE_COLOR.titles,
     },
     {
       icon: Target,
       label: "ミッション受取可能",
       value: `${missions?.filter((m) => m.claimable).length ?? 0}件`,
+      color: STAT_TILE_COLOR.missions,
     },
     {
       icon: BookOpen,
       label: "累計学習時間",
       value: `${studySummary?.totalMinutes ?? 0}分`,
+      color: STAT_TILE_COLOR.study,
     },
     {
       icon: GraduationCap,
       label: "資格合格",
       value: `${qualifications?.filter((q) => q.status === "passed").length ?? 0} / ${qualifications?.length ?? 0}`,
+      color: STAT_TILE_COLOR.qualifications,
     },
   ];
+
+  const backgroundClass = settlement
+    ? (TIER_PAGE_BACKGROUND[settlement.tier] ?? "")
+    : "";
 
   return (
     <>
       <AppNav />
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-10">
+      <div className={backgroundClass}>
+        <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-10">
         <div className="space-y-1">
           <h1 className="flex items-center gap-2 text-2xl font-bold">
             <User className="text-primary size-6" />
@@ -172,7 +194,11 @@ export default async function ProfilePage() {
           {stats.map((stat) => (
             <Card key={stat.label}>
               <CardContent className="flex items-center gap-3 py-4">
-                <stat.icon className="text-primary size-5 shrink-0" />
+                <div
+                  className={`flex size-10 shrink-0 items-center justify-center rounded-full ${stat.color}`}
+                >
+                  <stat.icon className="size-5" />
+                </div>
                 <div className="min-w-0">
                   <p className="text-muted-foreground text-xs">{stat.label}</p>
                   <p className="truncate font-semibold">{stat.value}</p>
@@ -181,7 +207,8 @@ export default async function ProfilePage() {
             </Card>
           ))}
         </div>
-      </main>
+        </main>
+      </div>
     </>
   );
 }

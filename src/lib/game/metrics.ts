@@ -68,10 +68,12 @@ export type PeriodMetric =
   | "commitCount"
   | "issueCloseCount"
   | "prOpenCount"
-  | "prMergeCount";
+  | "prMergeCount"
+  | "studyMinutes";
 
 /**
- * 指定日時以降の活動件数を集計する(デイリー/ウィークリーミッション用)。
+ * 指定日時以降の活動量を集計する(デイリー/ウィークリーミッション用)。
+ * studyMinutesのみ件数ではなく分数の合計を返す。
  */
 export async function countMetricSince(
   userId: string,
@@ -95,5 +97,12 @@ export async function countMetricSince(
       return prisma.githubPullRequest.count({
         where: { repository: { userId }, mergedAt: { gte: since } },
       });
+    case "studyMinutes": {
+      const agg = await prisma.studyLog.aggregate({
+        where: { player: { userId }, recordedAt: { gte: since } },
+        _sum: { minutes: true },
+      });
+      return agg._sum.minutes ?? 0;
+    }
   }
 }

@@ -78,6 +78,9 @@ model Player {
   loginBonusStreak Int       @default(0)
   equippedTitleId  String?
   equippedTitle    TitleMaster? @relation("EquippedTitle", fields: [equippedTitleId], references: [id])
+  // 検証用の一時フィールド。tierの見た目を確認するための管理者用オーバーライド。
+  // 確認作業が終わり次第削除予定(src/lib/game/debugAdmin.ts参照)。
+  debugTierOverride Int?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -97,6 +100,7 @@ model TitleMaster {
   name            String
   condition       String
   unlockCondition Json
+  rarity          String @default("bronze") // "bronze" | "silver" | "gold" | "platinum"(表示用)
 
   playerTitles PlayerTitle[]
   equippedBy   Player[] @relation("EquippedTitle")
@@ -186,6 +190,7 @@ model BuildingMaster {
   description String
   metric      String // 建物の成長に使う指標(ActivityMetricsのキー)
   thresholds  Json // レベルごとの閾値の配列。例: [1,5,15,30,50] で最大Lv5
+  flavorTexts Json? // レベルごとのフレーバーテキスト配列(thresholdsと同じ長さ)。nullの場合はdescriptionを使う
   requiredTier Int   @default(1) // この建物が出現する村の発展段階(1〜6)
   sortOrder   Int    @default(0)
 
@@ -233,6 +238,7 @@ model AchievementMaster {
   name            String
   condition       String
   unlockCondition Json? // null の場合はコード側の特殊イベント判定(例: first_sync)を使う
+  rarity          String @default("bronze") // "bronze" | "silver" | "gold" | "platinum"(表示用)
 
   playerAchievements PlayerAchievement[]
 }

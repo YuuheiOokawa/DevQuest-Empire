@@ -37,6 +37,7 @@ export type MissionView = {
   name: string;
   description: string;
   period: string;
+  metric: string;
   progressValue: number;
   targetValue: number;
   expReward: number;
@@ -75,6 +76,7 @@ export async function getMissionsView(userId: string): Promise<MissionView[] | n
       name: mission.name,
       description: mission.description,
       period: mission.period,
+      metric: mission.metric,
       progressValue: Math.min(progressValue, mission.targetValue),
       targetValue: mission.targetValue,
       expReward: mission.expReward,

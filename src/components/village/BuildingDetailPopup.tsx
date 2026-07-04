@@ -65,7 +65,9 @@ export function BuildingDetailPopup({
           </div>
         </div>
 
-        <p className="text-muted-foreground mt-3 text-sm">{building.description}</p>
+        <p className="text-muted-foreground mt-3 text-sm">
+          {building.unlocked ? building.flavorText : building.description}
+        </p>
 
         <div className="mt-3 space-y-1">
           <div className="flex items-center justify-between text-sm">
