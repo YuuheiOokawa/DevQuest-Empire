@@ -1029,6 +1029,33 @@ const missionMasters = [
     targetValue: 180,
     expReward: 70,
   },
+  {
+    type: "monthly_commit_40",
+    name: "今月はコミットを40回",
+    description: "今月中に合計40回コミットしましょう。",
+    period: "monthly",
+    metric: "commitCount",
+    targetValue: 40,
+    expReward: 150,
+  },
+  {
+    type: "monthly_pr_merge_8",
+    name: "今月はPRを8件マージ",
+    description: "今月中にPull Requestを8件マージしましょう。",
+    period: "monthly",
+    metric: "prMergeCount",
+    targetValue: 8,
+    expReward: 200,
+  },
+  {
+    type: "monthly_study_600",
+    name: "今月は600分学習",
+    description: "今月中に合計600分(10時間)以上学習しましょう。",
+    period: "monthly",
+    metric: "studyMinutes",
+    targetValue: 600,
+    expReward: 180,
+  },
 ];
 
 const qualificationMasters = [
