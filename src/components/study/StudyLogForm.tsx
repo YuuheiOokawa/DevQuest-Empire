@@ -7,9 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { formatGrowthNotifications } from "@/lib/game/notifications";
+import { useLevelUp } from "@/components/levelup/LevelUpContext";
 
 export function StudyLogForm() {
   const router = useRouter();
+  const reportGrowthResult = useLevelUp();
   const [category, setCategory] = useState("");
   const [title, setTitle] = useState("");
   const [minutes, setMinutes] = useState("");
@@ -43,6 +45,7 @@ export function StudyLogForm() {
       const result = await res.json();
       setMessage(`記録しました(+${result.expGained}EXP)`);
       setNotifications(formatGrowthNotifications(result));
+      reportGrowthResult(result);
       setCategory("");
       setTitle("");
       setMinutes("");

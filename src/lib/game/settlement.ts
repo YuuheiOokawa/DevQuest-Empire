@@ -25,6 +25,30 @@ export type SettlementInfo = {
   nextTierBuildingCount: number;
 };
 
+/** 指定したtierを起点にSettlementInfoを構築する(実際の判定・デバッグ用の強制表示の両方から使う共通処理)。 */
+export function buildSettlementInfoForTier(
+  tier: number,
+  levelsByTier: Record<number, number>,
+  maxLevelsByTier: Record<number, number>,
+  buildingCountByTier: Record<number, number>
+): SettlementInfo {
+  const currentTier = Math.min(Math.max(tier, 1), MAX_TIER);
+  const currentDef = TIER_DEFINITIONS[currentTier - 1];
+  const nextDef = TIER_DEFINITIONS[currentTier]; // undefined if maxed out
+
+  return {
+    tier: currentTier,
+    tierName: currentDef.name,
+    roleName: currentDef.role,
+    scoreInCurrentTier: levelsByTier[currentTier] ?? 0,
+    maxScoreInCurrentTier: maxLevelsByTier[currentTier] ?? 0,
+    nextTierName: nextDef?.name ?? null,
+    nextTierRole: nextDef?.role ?? null,
+    requiredScoreForNextTier: nextDef?.requiredScoreInPreviousTier ?? null,
+    nextTierBuildingCount: nextDef ? (buildingCountByTier[nextDef.tier] ?? 0) : 0,
+  };
+}
+
 /**
  * tierごとの建物レベル合計(levelsByTier)とtierごとの最大レベル合計(maxLevelsByTier)から
  * 現在の発展段階を算出する。
@@ -45,18 +69,10 @@ export function computeSettlementTier(
     }
   }
 
-  const currentDef = TIER_DEFINITIONS[currentTier - 1];
-  const nextDef = TIER_DEFINITIONS[currentTier]; // undefined if maxed out
-
-  return {
-    tier: currentTier,
-    tierName: currentDef.name,
-    roleName: currentDef.role,
-    scoreInCurrentTier: levelsByTier[currentTier] ?? 0,
-    maxScoreInCurrentTier: maxLevelsByTier[currentTier] ?? 0,
-    nextTierName: nextDef?.name ?? null,
-    nextTierRole: nextDef?.role ?? null,
-    requiredScoreForNextTier: nextDef?.requiredScoreInPreviousTier ?? null,
-    nextTierBuildingCount: nextDef ? (buildingCountByTier[nextDef.tier] ?? 0) : 0,
-  };
+  return buildSettlementInfoForTier(
+    currentTier,
+    levelsByTier,
+    maxLevelsByTier,
+    buildingCountByTier
+  );
 }

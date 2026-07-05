@@ -7,8 +7,8 @@ import {
 } from "@/lib/github";
 import { EXP_RATES, recalcLevel } from "@/lib/game/exp";
 import { updateVillageBuildings, formatBuildingUpdate } from "@/lib/game/buildings";
-import { updateStreak, unlockAchievements } from "@/lib/game/achievements";
-import { unlockTitles } from "@/lib/game/titles";
+import { updateStreak } from "@/lib/game/achievements";
+import { unlockProgressionRewards } from "@/lib/game/progression";
 
 export type SyncResult = {
   newCommits: number;
@@ -175,8 +175,12 @@ export async function syncGithubForUser(userId: string): Promise<SyncResult> {
     formatBuildingUpdate(buildingResult);
 
   await updateStreak(userId, hasActivityToday);
-  const unlockedAchievements = await unlockAchievements(userId, isFirstSync);
-  const unlockedTitles = await unlockTitles(updatedPlayer.id, level);
+  const { unlockedAchievements, unlockedTitles } = await unlockProgressionRewards(
+    userId,
+    updatedPlayer.id,
+    level,
+    isFirstSync
+  );
 
   return {
     newCommits,

@@ -2,8 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { countMetricSince, type PeriodMetric } from "@/lib/game/metrics";
 import { recalcLevel } from "@/lib/game/exp";
 import { updateVillageBuildings, formatBuildingUpdate } from "@/lib/game/buildings";
-import { unlockAchievements } from "@/lib/game/achievements";
-import { unlockTitles } from "@/lib/game/titles";
+import { unlockProgressionRewards } from "@/lib/game/progression";
 
 function todayPeriodStart(): Date {
   return new Date(new Date().toISOString().slice(0, 10));
@@ -27,10 +26,20 @@ function weekPeriodKey(): string {
   return weekPeriodStart().toISOString().slice(0, 10);
 }
 
+/** 月の開始(1日 00:00 UTC)を求める */
+function monthPeriodStart(): Date {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+}
+
+function monthPeriodKey(): string {
+  return monthPeriodStart().toISOString().slice(0, 7);
+}
+
 function periodStartAndKey(period: string): { start: Date; key: string } {
-  return period === "weekly"
-    ? { start: weekPeriodStart(), key: weekPeriodKey() }
-    : { start: todayPeriodStart(), key: todayPeriodKey() };
+  if (period === "weekly") return { start: weekPeriodStart(), key: weekPeriodKey() };
+  if (period === "monthly") return { start: monthPeriodStart(), key: monthPeriodKey() };
+  return { start: todayPeriodStart(), key: todayPeriodKey() };
 }
 
 export type MissionView = {
@@ -38,6 +47,7 @@ export type MissionView = {
   name: string;
   description: string;
   period: string;
+  metric: string;
   progressValue: number;
   targetValue: number;
   expReward: number;
@@ -76,6 +86,7 @@ export async function getMissionsView(userId: string): Promise<MissionView[] | n
       name: mission.name,
       description: mission.description,
       period: mission.period,
+      metric: mission.metric,
       progressValue: Math.min(progressValue, mission.targetValue),
       targetValue: mission.targetValue,
       expReward: mission.expReward,
@@ -165,8 +176,11 @@ export async function claimMission(
     : { newlyUnlocked: [], leveledUp: [], tierUpTo: null };
   const { unlockedBuildings, leveledUpBuildings, tierUpTo } =
     formatBuildingUpdate(buildingResult);
-  const unlockedAchievements = await unlockAchievements(userId, false);
-  const unlockedTitles = await unlockTitles(player.id, level);
+  const { unlockedAchievements, unlockedTitles } = await unlockProgressionRewards(
+    userId,
+    player.id,
+    level
+  );
 
   return {
     expGained: mission.expReward,

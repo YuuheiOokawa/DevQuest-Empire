@@ -1,13 +1,18 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { computeActivityMetrics, type ActivityMetrics } from "@/lib/game/metrics";
-import { computeSettlementTier, type SettlementInfo } from "@/lib/game/settlement";
+import {
+  computeSettlementTier,
+  buildSettlementInfoForTier,
+  type SettlementInfo,
+} from "@/lib/game/settlement";
 
 // 根拠: 18_Phase3_Detailed_Design.md Part2 を拡張し、建物ごとに
 // レベル制(Lv1〜thresholds.length)を導入(Phase5)。さらに発展段階
 // (村→町→大きな町→帝国→王国→国)による建物の出現ゲートを追加(Phase6)。
 
 const thresholdsSchema = z.array(z.number()).min(1);
+const flavorTextsSchema = z.array(z.string()).min(1);
 
 function computeLevelForMetric(metricValue: number, thresholds: number[]): number {
   let level = 0;
@@ -66,10 +71,31 @@ async function computeBuildingState(userId: string, playerLevel: number) {
     allBuildings,
     potentialLevels,
     maxLevels,
+    levelsByTier,
     maxLevelsByTier,
     buildingCountByTier,
     settlement,
   };
+}
+
+/**
+ * 表示用の発展段階を解決する。debugTierOverrideが設定されている場合のみ、
+ * 実際の活動量に基づく段階を無視して指定のtierを表示する。
+ *
+ * 検証用の一時的な仕組み(src/lib/game/debugAdmin.ts参照)。確認作業が終わり次第、
+ * この関数・呼び出し箇所・debugTierOverrideフィールドをまとめて削除する予定。
+ */
+function resolveDisplaySettlement(
+  debugTierOverride: number | null,
+  computed: Awaited<ReturnType<typeof computeBuildingState>>
+): SettlementInfo {
+  if (debugTierOverride == null) return computed.settlement;
+  return buildSettlementInfoForTier(
+    debugTierOverride,
+    computed.levelsByTier,
+    computed.maxLevelsByTier,
+    computed.buildingCountByTier
+  );
 }
 
 export type BuildingUpdateResult = {
@@ -167,6 +193,7 @@ export type VillageBuildingView = {
   type: string;
   name: string;
   description: string;
+  flavorText: string;
   level: number;
   maxLevel: number;
   unlocked: boolean;
@@ -190,10 +217,9 @@ export async function getVillageBuildingsView(
 
   if (!player?.village) return null;
 
-  const { metrics, allBuildings, maxLevels, settlement } = await computeBuildingState(
-    userId,
-    player.level
-  );
+  const computed = await computeBuildingState(userId, player.level);
+  const { metrics, allBuildings, maxLevels } = computed;
+  const settlement = resolveDisplaySettlement(player.debugTierOverride, computed);
   const existingMap = new Map(
     player.village.buildings.map((b) => [b.buildingMasterId, b])
   );
@@ -209,11 +235,17 @@ export async function getVillageBuildingsView(
       const existing = existingMap.get(building.id);
       const level = existing?.level ?? 0;
       const maxLevel = maxLevels.get(building.id) ?? 0;
+      const flavorTexts = flavorTextsSchema.safeParse(building.flavorTexts);
+      const flavorText =
+        level > 0 && flavorTexts.success
+          ? (flavorTexts.data[level - 1] ?? building.description)
+          : building.description;
 
       return {
         type: building.type,
         name: building.name,
         description: building.description,
+        flavorText,
         level,
         maxLevel,
         unlocked: !!existing,
@@ -231,8 +263,8 @@ export async function getSettlementInfo(
 ): Promise<SettlementInfo | null> {
   const player = await prisma.player.findUnique({ where: { userId } });
   if (!player) return null;
-  const { settlement } = await computeBuildingState(userId, player.level);
-  return settlement;
+  const computed = await computeBuildingState(userId, player.level);
+  return resolveDisplaySettlement(player.debugTierOverride, computed);
 }
 
 export type VillageRank = "S" | "A" | "B" | "C" | "D" | "E";

@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { computeActivityMetrics } from "@/lib/game/metrics";
+import {
+  evaluateUnlockCondition,
+  type UnlockMetrics,
+} from "@/lib/game/unlockConditions";
 
 // 根拠: 18_Phase3_Detailed_Design.md Part3
 
@@ -63,30 +66,19 @@ export async function updateStreak(
 
 /**
  * 実績を判定し、条件を満たしたものをアンロックする。
+ * unlockConditionを持つ実績は指標ベースで判定し、
+ * unlockConditionがnullの実績(first_syncなど)はイベントフラグで判定する。
  * 戻り値は新たにアンロックされた実績名の一覧。
  */
 export async function unlockAchievements(
-  userId: string,
+  playerId: string,
+  metrics: UnlockMetrics,
   isFirstSync: boolean
 ): Promise<string[]> {
-  const player = await prisma.player.findUniqueOrThrow({ where: { userId } });
-  const metrics = await computeActivityMetrics(userId, player.level);
-  const completedQuestCount = await prisma.quest.count({
-    where: { playerId: player.id, status: "completed" },
-  });
-
-  const achieved: Record<string, boolean> = {
-    first_sync: isFirstSync,
-    streak_7: player.longestStreak >= 7,
-    commit_100: metrics.commitCount >= 100,
-    pr_merge_10: metrics.prMergeCount >= 10,
-    quest_30: completedQuestCount >= 30,
-  };
-
   const [allAchievements, existing] = await Promise.all([
     prisma.achievementMaster.findMany(),
     prisma.playerAchievement.findMany({
-      where: { playerId: player.id },
+      where: { playerId },
       select: { achievementMasterId: true },
     }),
   ]);
@@ -95,9 +87,15 @@ export async function unlockAchievements(
   const newlyUnlocked: string[] = [];
   for (const achievement of allAchievements) {
     if (existingIds.has(achievement.id)) continue;
-    if (achieved[achievement.type]) {
+
+    const unlocked =
+      achievement.unlockCondition === null
+        ? achievement.type === "first_sync" && isFirstSync
+        : evaluateUnlockCondition(metrics, achievement.unlockCondition);
+
+    if (unlocked) {
       await prisma.playerAchievement.create({
-        data: { playerId: player.id, achievementMasterId: achievement.id },
+        data: { playerId, achievementMasterId: achievement.id },
       });
       newlyUnlocked.push(achievement.name);
     }
@@ -106,10 +104,13 @@ export async function unlockAchievements(
   return newlyUnlocked;
 }
 
+export type AchievementRarity = "bronze" | "silver" | "gold" | "platinum";
+
 export type AchievementView = {
   type: string;
   name: string;
   condition: string;
+  rarity: AchievementRarity;
   unlocked: boolean;
   unlockedAt: Date | null;
 };
@@ -134,6 +135,7 @@ export async function getAchievementsView(
     type: achievement.type,
     name: achievement.name,
     condition: achievement.condition,
+    rarity: (achievement.rarity as AchievementRarity) ?? "bronze",
     unlocked: unlockedMap.has(achievement.id),
     unlockedAt: unlockedMap.get(achievement.id) ?? null,
   }));

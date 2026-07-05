@@ -6,6 +6,7 @@ import { Gift } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatGrowthNotifications } from "@/lib/game/notifications";
+import { useLevelUp } from "@/components/levelup/LevelUpContext";
 
 export function LoginBonusCard({
   claimedToday,
@@ -17,6 +18,7 @@ export function LoginBonusCard({
   todayReward: number;
 }) {
   const router = useRouter();
+  const reportGrowthResult = useLevelUp();
   const [pending, setPending] = useState(false);
   const [claimed, setClaimed] = useState(claimedToday);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +36,7 @@ export function LoginBonusCard({
       }
       setClaimed(true);
       setNotifications(formatGrowthNotifications(result));
+      reportGrowthResult(result);
       router.refresh();
     } finally {
       setPending(false);

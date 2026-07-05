@@ -1,8 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { recalcLevel } from "@/lib/game/exp";
 import { updateVillageBuildings, formatBuildingUpdate } from "@/lib/game/buildings";
-import { unlockAchievements } from "@/lib/game/achievements";
-import { unlockTitles } from "@/lib/game/titles";
+import { unlockProgressionRewards } from "@/lib/game/progression";
 
 // 資格合格時の一括ボーナス。GitHub活動の日々の積み重ねに対し、
 // 現実の大きな達成として意味のある値にする。
@@ -153,8 +152,11 @@ export async function markQualificationPassed(
     : { newlyUnlocked: [], leveledUp: [], tierUpTo: null };
   const { unlockedBuildings, leveledUpBuildings, tierUpTo } =
     formatBuildingUpdate(buildingResult);
-  const unlockedAchievements = await unlockAchievements(userId, false);
-  const unlockedTitles = await unlockTitles(player.id, level);
+  const { unlockedAchievements, unlockedTitles } = await unlockProgressionRewards(
+    userId,
+    player.id,
+    level
+  );
 
   return {
     expGained: QUALIFICATION_PASS_EXP,
