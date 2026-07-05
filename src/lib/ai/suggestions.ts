@@ -16,6 +16,18 @@ export function getLearningSuggestion(metrics: ActivityMetrics): string {
   return "学習ペースは良好です。この調子で継続していきましょう。";
 }
 
+// AI社員「コードレビュアー」用。学習ペースではなく、コミットの積み方・粒度に
+// 着目したレビュー観点のコメントを返す(getLearningSuggestionとは視点を分ける)。
+export function getCodeReviewReport(metrics: ActivityMetrics): string {
+  if (metrics.commitCount === 0) {
+    return "まだコミット履歴が確認できません。小さな変更でも良いので、こまめにコミットする習慣をつけましょう。";
+  }
+  if (metrics.commitCount < 20) {
+    return "コミット数はまだ控えめです。1つの変更を小さく分割してコミットすると、後からレビューしやすくなります。";
+  }
+  return "コミットが着実に積み重なっています。たまには過去のコミットメッセージを見直し、わかりやすさを磨いてみましょう。";
+}
+
 export type CertificationSuggestion = {
   title: string;
   description: string;

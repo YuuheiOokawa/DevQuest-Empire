@@ -8,6 +8,7 @@ import { getSettlementInfo } from "@/lib/game/buildings";
 import { getQualificationsView } from "@/lib/game/qualifications";
 import { getOrCreateTodaysQuest } from "@/lib/game/quest";
 import { recalcLevel } from "@/lib/game/exp";
+import { getAiEmployeesView } from "@/lib/game/aiEmployees";
 import { getActivitySummarySince, getActivityHeatmap } from "@/services/githubService";
 import {
   getLearningSuggestion,
@@ -33,16 +34,25 @@ export default async function AiPage() {
 
   const player = await prisma.player.findUniqueOrThrow({ where: { userId } });
 
-  const [activity, settlement, qualifications, metrics, last30Days, heatmap, todaysQuest] =
-    await Promise.all([
-      getActivitySummary(userId),
-      getSettlementInfo(userId),
-      getQualificationsView(userId),
-      computeActivityMetrics(userId, player.level),
-      getActivitySummarySince(userId, 30),
-      getActivityHeatmap(userId, 84),
-      getOrCreateTodaysQuest(userId),
-    ]);
+  const [
+    activity,
+    settlement,
+    qualifications,
+    metrics,
+    last30Days,
+    heatmap,
+    todaysQuest,
+    aiEmployees,
+  ] = await Promise.all([
+    getActivitySummary(userId),
+    getSettlementInfo(userId),
+    getQualificationsView(userId),
+    computeActivityMetrics(userId, player.level),
+    getActivitySummarySince(userId, 30),
+    getActivityHeatmap(userId, 84),
+    getOrCreateTodaysQuest(userId),
+    getAiEmployeesView(userId),
+  ]);
 
   const { currentExp, expToNextLevel } = recalcLevel(player.exp);
   const learningSuggestion = getLearningSuggestion(metrics);
@@ -89,7 +99,7 @@ export default async function AiPage() {
           <LevelUpSuggestionCard suggestion={levelUpSuggestion} />
         </div>
 
-        <AiEmployeeCard />
+        <AiEmployeeCard result={aiEmployees} />
 
         <p className="text-muted-foreground text-center text-xs">
           学習提案・資格提案・発展提案・レベルアップ提案は無料のルールベースロジックで生成しています。

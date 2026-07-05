@@ -42,6 +42,9 @@ export function describeGithubError(error: unknown): string {
     return `同期は少し間隔を空けて行ってください(あと約${error.retryAfterSeconds}秒)。`;
   }
   const status = (error as { status?: number } | null)?.status;
+  if (status === 401) {
+    return "GitHubのアクセストークンが失効しています。設定画面から再度連携してください。";
+  }
   if (status === 403 || status === 429) {
     return "GitHub APIの利用制限に達しました。しばらく時間をおいて再度お試しください。";
   }
@@ -127,13 +130,25 @@ export async function fetchCommits(
   githubLogin: string,
   since?: Date
 ): Promise<FetchedCommit[]> {
-  const commits = await octokit.paginate(octokit.repos.listCommits, {
-    owner,
-    repo,
-    author: githubLogin,
-    since: since?.toISOString(),
-    per_page: 100,
-  });
+  let commits;
+  try {
+    commits = await octokit.paginate(octokit.repos.listCommits, {
+      owner,
+      repo,
+      author: githubLogin,
+      since: since?.toISOString(),
+      per_page: 100,
+    });
+  } catch (err) {
+    // コミットが1件も無い(空の)リポジトリに対してlistCommitsを呼ぶと
+    // GitHub APIは409 "Git Repository is empty."を返す(削除・権限喪失時は404)。
+    // 409は同期対象として正常なケース(コミット0件)なので、エラーにせず空配列を返す。
+    const status = (err as { status?: number } | null)?.status;
+    if (status === 409) {
+      return [];
+    }
+    throw err;
+  }
 
   return commits.map((c) => ({
     sha: c.sha,

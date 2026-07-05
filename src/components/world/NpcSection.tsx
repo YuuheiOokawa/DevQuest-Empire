@@ -18,7 +18,7 @@ const NPC_DESCRIPTION: Record<NPCKind, string> = {
   merchant: "市場や交易で賑わいを生む商人。",
   adventurer: "クエストに挑む冒険者たち。",
   soldier: "発展した町を守る兵士。",
-  aiWorker: "村の発展を支えるAI社員(構想中)。",
+  aiWorker: "AI画面でコードレビュー・学習・戦略のレポートを届けるAI社員。",
   animal: "村に暮らす動物たち。",
 };
 
