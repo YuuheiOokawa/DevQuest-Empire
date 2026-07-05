@@ -5,7 +5,15 @@ import { CanvasTexture, RepeatWrapping } from "three";
 // 濃淡だけを描き、色味はマテリアル側のcolorに任せる。
 // 生成コストを抑えるため種類ごとにモジュールスコープでキャッシュする。
 
-export type NoiseKind = "grass" | "soil" | "stone" | "rock";
+export type NoiseKind =
+  | "grass"
+  | "soil"
+  | "stone"
+  | "rock"
+  | "plaster"
+  | "shingle"
+  | "brick"
+  | "plank";
 
 const cache = new Map<string, CanvasTexture>();
 
@@ -124,11 +132,109 @@ function drawRock(ctx: CanvasRenderingContext2D, size: number, rand: () => numbe
   }
 }
 
+// 漆喰壁: 柔らかいまだら+うっすら縦の刷毛ムラ
+function drawPlaster(ctx: CanvasRenderingContext2D, size: number, rand: () => number) {
+  ctx.fillStyle = "#f2f0ec";
+  ctx.fillRect(0, 0, size, size);
+  for (let i = 0; i < 90; i++) {
+    const x = rand() * size;
+    const y = rand() * size;
+    const r = 8 + rand() * 24;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    const dark = rand() > 0.5;
+    g.addColorStop(0, dark ? "rgba(80,70,60,0.05)" : "rgba(255,255,250,0.07)");
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  for (let i = 0; i < 60; i++) {
+    const x = rand() * size;
+    ctx.strokeStyle = `rgba(90,80,70,${0.02 + rand() * 0.03})`;
+    ctx.lineWidth = 1 + rand() * 2;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x + (rand() - 0.5) * 10, size);
+    ctx.stroke();
+  }
+}
+
+// 屋根板: 横一列ごとに半ずらしで並ぶこけら葺き
+function drawShingle(ctx: CanvasRenderingContext2D, size: number, rand: () => number) {
+  ctx.fillStyle = "#efece7";
+  ctx.fillRect(0, 0, size, size);
+  const rowH = size / 8;
+  const colW = size / 6;
+  for (let row = 0; row < 8; row++) {
+    const offset = row % 2 === 0 ? 0 : colW / 2;
+    for (let col = -1; col < 7; col++) {
+      const x = col * colW + offset;
+      const y = row * rowH;
+      const shade = 0.04 + rand() * 0.1;
+      ctx.fillStyle = rand() > 0.5 ? `rgba(50,40,35,${shade})` : `rgba(255,250,240,${shade})`;
+      ctx.fillRect(x + 1, y + 1, colW - 2, rowH - 2);
+    }
+    // 段の影(下端に濃い線)
+    ctx.fillStyle = "rgba(30,25,20,0.28)";
+    ctx.fillRect(0, (row + 1) * rowH - 2, size, 2);
+  }
+}
+
+// レンガ: ランニングボンド(半ずらし)+モルタル目地
+function drawBrick(ctx: CanvasRenderingContext2D, size: number, rand: () => number) {
+  ctx.fillStyle = "#e8e4de";
+  ctx.fillRect(0, 0, size, size);
+  const rowH = size / 10;
+  const colW = size / 5;
+  for (let row = 0; row < 10; row++) {
+    const offset = row % 2 === 0 ? 0 : colW / 2;
+    for (let col = -1; col < 6; col++) {
+      const x = col * colW + offset;
+      const y = row * rowH;
+      const shade = 0.03 + rand() * 0.1;
+      ctx.fillStyle = rand() > 0.45 ? `rgba(70,50,40,${shade})` : `rgba(255,250,245,${shade})`;
+      ctx.fillRect(x + 2, y + 2, colW - 4, rowH - 4);
+      ctx.strokeStyle = "rgba(60,55,50,0.22)";
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x + 1, y + 1, colW - 2, rowH - 2);
+    }
+  }
+}
+
+// 木板: 縦板+木目+板の継ぎ目
+function drawPlank(ctx: CanvasRenderingContext2D, size: number, rand: () => number) {
+  ctx.fillStyle = "#ece7de";
+  ctx.fillRect(0, 0, size, size);
+  const plankW = size / 6;
+  for (let col = 0; col < 6; col++) {
+    const x = col * plankW;
+    const shade = 0.02 + rand() * 0.06;
+    ctx.fillStyle = rand() > 0.5 ? `rgba(60,45,30,${shade})` : `rgba(255,248,235,${shade})`;
+    ctx.fillRect(x, 0, plankW, size);
+    // 板の継ぎ目
+    ctx.fillStyle = "rgba(40,30,20,0.3)";
+    ctx.fillRect(x, 0, 2, size);
+    // 木目
+    for (let i = 0; i < 5; i++) {
+      const gx = x + 4 + rand() * (plankW - 8);
+      ctx.strokeStyle = `rgba(70,50,30,${0.05 + rand() * 0.08})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(gx, 0);
+      ctx.bezierCurveTo(gx + (rand() - 0.5) * 6, size * 0.35, gx + (rand() - 0.5) * 6, size * 0.65, gx, size);
+      ctx.stroke();
+    }
+  }
+}
+
 const DRAWERS: Record<NoiseKind, (ctx: CanvasRenderingContext2D, size: number, rand: () => number) => void> = {
   grass: drawGrass,
   soil: drawSoil,
   stone: drawStone,
   rock: drawRock,
+  plaster: drawPlaster,
+  shingle: drawShingle,
+  brick: drawBrick,
+  plank: drawPlank,
 };
 
 export function getNoiseTexture(kind: NoiseKind, repeat = 6): CanvasTexture | null {
