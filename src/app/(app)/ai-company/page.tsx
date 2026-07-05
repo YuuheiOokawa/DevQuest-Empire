@@ -9,10 +9,11 @@ export default function AiCompanyPage() {
       <div className="space-y-1">
         <h1 className="flex items-center gap-2 text-2xl font-bold">
           <Building2 className="text-primary size-6" />
-          AI会社経営
+          AI Software Company
         </h1>
         <p className="text-muted-foreground text-sm">
-          あなたは社長。AI社員たちがアプリを企画・開発・リリースし、会社を成長させていきます。
+          あなたは社長。AI社員たちが企画・設計・実装・レビュー・リリースまで自動で進めます。
+          あなたの仕事は採用・育成・投資・承認です。
         </p>
       </div>
       <AiCompanyClient />

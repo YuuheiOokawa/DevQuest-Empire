@@ -1,4 +1,14 @@
-import { ScrollText, Info, CheckCircle2, TriangleAlert, Rocket, Coins } from "lucide-react";
+import {
+  ScrollText,
+  Info,
+  CheckCircle2,
+  TriangleAlert,
+  Rocket,
+  Coins,
+  MessageCircle,
+  Users,
+  Eye,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { LogEntry, LogKind } from "@/services/aiCompanyTypes";
 
@@ -8,6 +18,9 @@ const LOG_ICON: Record<LogKind, typeof Info> = {
   warning: TriangleAlert,
   release: Rocket,
   money: Coins,
+  talk: MessageCircle,
+  meeting: Users,
+  review: Eye,
 };
 
 const LOG_COLOR: Record<LogKind, string> = {
@@ -16,6 +29,9 @@ const LOG_COLOR: Record<LogKind, string> = {
   warning: "text-amber-500",
   release: "text-violet-500",
   money: "text-yellow-600 dark:text-yellow-400",
+  talk: "text-teal-500",
+  meeting: "text-indigo-500",
+  review: "text-fuchsia-500",
 };
 
 export function DevelopmentLog({ logs }: { logs: LogEntry[] }) {
