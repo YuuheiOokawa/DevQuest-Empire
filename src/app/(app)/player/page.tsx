@@ -14,7 +14,6 @@ import { getTitlesView, getEquippedTitleName } from "@/lib/game/titles";
 import { getMissionsView } from "@/lib/game/missions";
 import { getStudySummary } from "@/lib/game/study";
 import { getQualificationsView } from "@/lib/game/qualifications";
-import { AppShell } from "@/components/layout/AppShell";
 import {
   TIER_PAGE_BACKGROUND,
 } from "@/components/village/SettlementBadge";
@@ -157,22 +156,20 @@ export default async function PlayerPage() {
   ];
 
   return (
-    <AppShell initialLevel={level}>
-      <div className={backgroundClass}>
-        <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-10">
-          <div className="space-y-1">
-            <h1 className="flex items-center gap-2 text-2xl font-bold">
-              <User className="text-primary size-6" />
-              プレイヤー
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              成長・実績・称号・資格をまとめて確認できます。
-            </p>
-          </div>
+    <div className={backgroundClass}>
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-10">
+        <div className="space-y-1">
+          <h1 className="flex items-center gap-2 text-2xl font-bold">
+            <User className="text-primary size-6" />
+            プレイヤー
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            成長・実績・称号・資格をまとめて確認できます。
+          </p>
+        </div>
 
-          <PlayerTabs tabs={tabs} />
-        </main>
-      </div>
-    </AppShell>
+        <PlayerTabs tabs={tabs} />
+      </main>
+    </div>
   );
 }

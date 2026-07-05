@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AiConsultModal } from "@/components/ai/AiConsultModal";
+import { AiConsultModal, buildConsultTopics } from "@/components/ai/AiConsultModal";
 
 export function AiAssistantPanel({
   playerName,
@@ -21,6 +21,7 @@ export function AiAssistantPanel({
   certificationSuggestion,
   worldAdvice,
   levelUpSuggestion,
+  nextProjectSuggestion,
 }: {
   playerName: string;
   githubComment: string;
@@ -28,8 +29,17 @@ export function AiAssistantPanel({
   certificationSuggestion: string;
   worldAdvice: string;
   levelUpSuggestion: string;
+  nextProjectSuggestion: string;
 }) {
   const [consultOpen, setConsultOpen] = useState(false);
+  const consultTopics = buildConsultTopics({
+    githubComment,
+    learningSuggestion,
+    certificationSuggestion,
+    worldAdvice,
+    levelUpSuggestion,
+    nextProjectSuggestion,
+  });
 
   return (
     <>
@@ -79,7 +89,9 @@ export function AiAssistantPanel({
           </Button>
         </CardContent>
       </Card>
-      {consultOpen && <AiConsultModal onClose={() => setConsultOpen(false)} />}
+      {consultOpen && (
+        <AiConsultModal topics={consultTopics} onClose={() => setConsultOpen(false)} />
+      )}
     </>
   );
 }

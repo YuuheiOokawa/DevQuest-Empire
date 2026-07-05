@@ -16,7 +16,7 @@ import {
   getWorldAdvice,
   getLevelUpSuggestion,
 } from "@/lib/ai/suggestions";
-import { AppShell } from "@/components/layout/AppShell";
+import { getNextProjectSuggestions } from "@/lib/ai/projectIdeas";
 import { AiAssistantPanel } from "@/components/ai/AiAssistantPanel";
 import { AiEmployeeCard } from "@/components/ai/AiEmployeeCard";
 import { GithubAnalysisCard } from "@/components/ai/GithubAnalysisCard";
@@ -24,6 +24,7 @@ import { LearningSuggestionCard } from "@/components/ai/LearningSuggestionCard";
 import { CertificationSuggestionCard } from "@/components/ai/CertificationSuggestionCard";
 import { WorldAdviceCard } from "@/components/ai/WorldAdviceCard";
 import { LevelUpSuggestionCard } from "@/components/ai/LevelUpSuggestionCard";
+import { NextProjectCard } from "@/components/ai/NextProjectCard";
 
 export default async function AiPage() {
   const session = await auth();
@@ -63,49 +64,54 @@ export default async function AiPage() {
     expToNextLevel,
     todaysQuest.status === "completed"
   );
+  const nextProjectSuggestions = getNextProjectSuggestions(player.level, qualifications);
+  const nextProjectSuggestion = nextProjectSuggestions[0]
+    ? `${nextProjectSuggestions[0].idea.title} — ${nextProjectSuggestions[0].idea.description}`
+    : "現在提案できるプロジェクトがありません。";
 
   return (
-    <AppShell>
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-10">
-        <div className="space-y-1">
-          <h1 className="flex items-center gap-2 text-2xl font-bold">
-            <Bot className="text-primary size-6" />
-            AI
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            DevQuest Empire独自のAI機能。現在はMVPとして基本的な分析・提案のみ提供しています。
-          </p>
-        </div>
-
-        <AiAssistantPanel
-          playerName={player.name}
-          githubComment={activity.aiComment}
-          learningSuggestion={learningSuggestion}
-          certificationSuggestion={`${certificationSuggestion.title} — ${certificationSuggestion.description}`}
-          worldAdvice={worldAdvice}
-          levelUpSuggestion={levelUpSuggestion}
-        />
-
-        <GithubAnalysisCard
-          activity={activity}
-          last30Days={last30Days}
-          heatmap={heatmap}
-        />
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <LearningSuggestionCard suggestion={learningSuggestion} />
-          <CertificationSuggestionCard suggestion={certificationSuggestion} />
-          <WorldAdviceCard advice={worldAdvice} />
-          <LevelUpSuggestionCard suggestion={levelUpSuggestion} />
-        </div>
-
-        <AiEmployeeCard result={aiEmployees} />
-
-        <p className="text-muted-foreground text-center text-xs">
-          学習提案・資格提案・発展提案・レベルアップ提案は無料のルールベースロジックで生成しています。
-          将来的にOpenAI/Gemini/Claude等の有料APIと連携し、より柔軟な対話・提案に拡張する構想です(未実装・費用発生のため導入は別途判断)。
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-10">
+      <div className="space-y-1">
+        <h1 className="flex items-center gap-2 text-2xl font-bold">
+          <Bot className="text-primary size-6" />
+          AI
+        </h1>
+        <p className="text-muted-foreground text-sm">
+          DevQuest Empire独自のAI機能。現在はMVPとして基本的な分析・提案のみ提供しています。
         </p>
-      </main>
-    </AppShell>
+      </div>
+
+      <AiAssistantPanel
+        playerName={player.name}
+        githubComment={activity.aiComment}
+        learningSuggestion={learningSuggestion}
+        certificationSuggestion={`${certificationSuggestion.title} — ${certificationSuggestion.description}`}
+        worldAdvice={worldAdvice}
+        levelUpSuggestion={levelUpSuggestion}
+        nextProjectSuggestion={nextProjectSuggestion}
+      />
+
+      <GithubAnalysisCard
+        activity={activity}
+        last30Days={last30Days}
+        heatmap={heatmap}
+      />
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <LearningSuggestionCard suggestion={learningSuggestion} />
+        <CertificationSuggestionCard suggestion={certificationSuggestion} />
+        <WorldAdviceCard advice={worldAdvice} />
+        <LevelUpSuggestionCard suggestion={levelUpSuggestion} />
+      </div>
+
+      <NextProjectCard suggestions={nextProjectSuggestions} />
+
+      <AiEmployeeCard result={aiEmployees} />
+
+      <p className="text-muted-foreground text-center text-xs">
+        学習提案・資格提案・発展提案・レベルアップ提案・次のプロジェクト提案は無料のルールベースロジックで生成しています。
+        将来的にOpenAI/Gemini/Claude等の有料APIと連携し、より柔軟な対話・提案に拡張する構想です(未実装・費用発生のため導入は別途判断)。
+      </p>
+    </main>
   );
 }

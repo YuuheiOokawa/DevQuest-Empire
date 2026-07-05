@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { HelpCircle } from "lucide-react";
 import { auth } from "@/lib/auth";
-import { AppShell } from "@/components/layout/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 
 const FAQS = [
@@ -29,29 +28,27 @@ export default async function HelpPage() {
   }
 
   return (
-    <AppShell>
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-10">
-        <div className="space-y-1">
-          <h1 className="flex items-center gap-2 text-2xl font-bold">
-            <HelpCircle className="text-primary size-6" />
-            ヘルプ
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            よくある質問をまとめています。
-          </p>
-        </div>
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-10">
+      <div className="space-y-1">
+        <h1 className="flex items-center gap-2 text-2xl font-bold">
+          <HelpCircle className="text-primary size-6" />
+          ヘルプ
+        </h1>
+        <p className="text-muted-foreground text-sm">
+          よくある質問をまとめています。
+        </p>
+      </div>
 
-        <div className="flex flex-col gap-3">
-          {FAQS.map((faq) => (
-            <Card key={faq.question}>
-              <CardContent className="flex flex-col gap-1 py-4">
-                <p className="font-medium">{faq.question}</p>
-                <p className="text-muted-foreground text-sm">{faq.answer}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </main>
-    </AppShell>
+      <div className="flex flex-col gap-3">
+        {FAQS.map((faq) => (
+          <Card key={faq.question}>
+            <CardContent className="flex flex-col gap-1 py-4">
+              <p className="font-medium">{faq.question}</p>
+              <p className="text-muted-foreground text-sm">{faq.answer}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </main>
   );
 }
