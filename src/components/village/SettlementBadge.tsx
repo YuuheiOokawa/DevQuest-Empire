@@ -10,7 +10,7 @@ const TIER_ICONS: Record<number, LucideIcon> = {
   6: Sparkles,
 };
 
-// tierが上がるほど豪華な配色にする。6(国)は金の光彩+リング付きで最も華やか。
+// tierが上がるほど豪華な配色にする。6(天空帝国)は金の光彩+リング付きで最も華やか。
 export const TIER_BADGE_STYLES: Record<number, string> = {
   1: "bg-gradient-to-br from-emerald-400 to-green-600 text-white",
   2: "bg-gradient-to-br from-sky-400 to-blue-600 text-white",

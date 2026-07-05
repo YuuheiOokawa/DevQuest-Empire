@@ -64,6 +64,7 @@ export async function getRecentQuestHistory(
 
 export type CompleteQuestResult = {
   newLevel: number;
+  expGained: number;
   unlockedBuildings: string[];
   leveledUpBuildings: string[];
   tierUpTo: string | null;
@@ -117,6 +118,7 @@ export async function completeQuest(
 
   return {
     newLevel: level,
+    expGained: quest.expReward,
     unlockedBuildings,
     leveledUpBuildings,
     tierUpTo,

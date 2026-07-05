@@ -4,6 +4,7 @@ import {
   fetchCommits,
   fetchClosedIssues,
   fetchPullRequestsByUser,
+  SyncCooldownError,
 } from "@/lib/github";
 import { EXP_RATES, recalcLevel } from "@/lib/game/exp";
 import { updateVillageBuildings, formatBuildingUpdate } from "@/lib/game/buildings";
@@ -28,6 +29,9 @@ function isToday(date: Date): boolean {
   return date.toISOString().slice(0, 10) === now.toISOString().slice(0, 10);
 }
 
+// GitHub APIのレート制限を圧迫しないよう、同期の連打を防ぐクールダウン。
+const SYNC_COOLDOWN_MS = 60 * 1000;
+
 /**
  * GitHub同期処理。フローの根拠: 18_Phase3_Detailed_Design.md Part5
  * 1. syncEnabledなリポジトリを取得
@@ -47,6 +51,18 @@ export async function syncGithubForUser(userId: string): Promise<SyncResult> {
   const repositories = await prisma.githubRepository.findMany({
     where: { userId, syncEnabled: true },
   });
+
+  const lastSyncedTimes = repositories
+    .map((r) => r.lastSyncedAt?.getTime())
+    .filter((t): t is number => typeof t === "number");
+  if (lastSyncedTimes.length > 0) {
+    const mostRecentSync = Math.max(...lastSyncedTimes);
+    const elapsedMs = Date.now() - mostRecentSync;
+    if (elapsedMs < SYNC_COOLDOWN_MS) {
+      throw new SyncCooldownError(Math.ceil((SYNC_COOLDOWN_MS - elapsedMs) / 1000));
+    }
+  }
+
   // 全リポジトリが未同期(lastSyncedAtがnull)なら、これが最初の同期とみなす。
   const isFirstSync =
     repositories.length > 0 && repositories.every((r) => r.lastSyncedAt === null);

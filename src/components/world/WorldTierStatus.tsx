@@ -88,7 +88,7 @@ export function WorldTierStatus({
       ) : (
         <Card className="border-amber-300 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20">
           <CardContent className="py-4 text-center text-sm font-medium">
-            最高の発展段階「国」に到達しました。
+            最高の発展段階「天空帝国」に到達しました。
           </CardContent>
         </Card>
       )}

@@ -66,7 +66,7 @@ function FarMountains({ tier, radius }: { tier: number; radius: number }) {
   );
 }
 
-// ティア4(帝国)以降、街全体を囲む城壁が現れる。
+// ティア4(王国)以降、街全体を囲む城壁が現れる。
 function CityWallShape({ tier, radius }: { tier: number; radius: number }) {
   const world = getTierWorldConfig(tier);
   if (tier < 4 || !world.wallColor) return null;

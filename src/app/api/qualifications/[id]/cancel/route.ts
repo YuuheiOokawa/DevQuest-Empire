@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { cancelQualificationPlan } from "@/lib/game/qualifications";
+import { resetQualification } from "@/lib/game/qualifications";
 
 export async function POST(
   _request: Request,
@@ -12,6 +12,6 @@ export async function POST(
   }
 
   const { id } = await params;
-  await cancelQualificationPlan(session.user.id, id);
+  await resetQualification(session.user.id, id);
   return NextResponse.json({ ok: true });
 }

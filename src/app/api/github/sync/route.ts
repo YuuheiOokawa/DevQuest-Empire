@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { syncGithubForUser } from "@/lib/sync/syncGithub";
-import { describeGithubError } from "@/lib/github";
+import { describeGithubError, SyncCooldownError } from "@/lib/github";
 
 export async function POST() {
   const session = await auth();
@@ -13,6 +13,16 @@ export async function POST() {
     const result = await syncGithubForUser(session.user.id);
     return NextResponse.json(result);
   } catch (err) {
+    if (err instanceof SyncCooldownError) {
+      return NextResponse.json(
+        {
+          error: "sync_cooldown",
+          message: describeGithubError(err),
+          retryAfterSeconds: err.retryAfterSeconds,
+        },
+        { status: 429 }
+      );
+    }
     console.error("github sync failed", err);
     return NextResponse.json(
       { error: "sync_failed", message: describeGithubError(err) },

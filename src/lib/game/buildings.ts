@@ -9,7 +9,7 @@ import {
 
 // 根拠: 18_Phase3_Detailed_Design.md Part2 を拡張し、建物ごとに
 // レベル制(Lv1〜thresholds.length)を導入(Phase5)。さらに発展段階
-// (村→町→大きな町→帝国→王国→国)による建物の出現ゲートを追加(Phase6)。
+// (村→町→都市→王国→帝国→天空帝国)による建物の出現ゲートを追加(Phase6)。
 
 const thresholdsSchema = z.array(z.number()).min(1);
 const flavorTextsSchema = z.array(z.string()).min(1);

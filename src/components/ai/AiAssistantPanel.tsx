@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Bot, MessageCircle, GitBranch, BookOpen, GraduationCap, Castle } from "lucide-react";
+import {
+  Bot,
+  MessageCircle,
+  GitBranch,
+  BookOpen,
+  GraduationCap,
+  Castle,
+  TrendingUp,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AiConsultModal } from "@/components/ai/AiConsultModal";
@@ -12,12 +20,14 @@ export function AiAssistantPanel({
   learningSuggestion,
   certificationSuggestion,
   worldAdvice,
+  levelUpSuggestion,
 }: {
   playerName: string;
   githubComment: string;
   learningSuggestion: string;
   certificationSuggestion: string;
   worldAdvice: string;
+  levelUpSuggestion: string;
 }) {
   const [consultOpen, setConsultOpen] = useState(false);
 
@@ -53,6 +63,10 @@ export function AiAssistantPanel({
             <div className="flex items-start gap-2">
               <Castle className="mt-0.5 size-4 shrink-0 text-violet-600 dark:text-violet-400" />
               <span>{worldAdvice}</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <TrendingUp className="mt-0.5 size-4 shrink-0 text-rose-600 dark:text-rose-400" />
+              <span>{levelUpSuggestion}</span>
             </div>
           </div>
 

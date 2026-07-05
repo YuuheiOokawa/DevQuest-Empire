@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { formatGrowthNotifications } from "@/lib/game/notifications";
 import { useLevelUp } from "@/components/levelup/LevelUpContext";
 
 export function StudyLogForm() {
@@ -19,14 +18,12 @@ export function StudyLogForm() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [notifications, setNotifications] = useState<string[]>([]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setPending(true);
     setError(null);
     setMessage(null);
-    setNotifications([]);
     try {
       const res = await fetch("/api/study-logs", {
         method: "POST",
@@ -43,8 +40,7 @@ export function StudyLogForm() {
         return;
       }
       const result = await res.json();
-      setMessage(`記録しました(+${result.expGained}EXP)`);
-      setNotifications(formatGrowthNotifications(result));
+      setMessage("記録しました");
       reportGrowthResult(result);
       setCategory("");
       setTitle("");
@@ -105,11 +101,6 @@ export function StudyLogForm() {
       </div>
       {error && <p className="text-destructive text-sm">{error}</p>}
       {message && <p className="text-muted-foreground text-sm">{message}</p>}
-      {notifications.map((line) => (
-        <p key={line} className="text-primary text-sm font-medium">
-          {line}
-        </p>
-      ))}
       <Button type="submit" disabled={pending} className="self-start">
         {pending ? "記録中..." : "記録する"}
       </Button>

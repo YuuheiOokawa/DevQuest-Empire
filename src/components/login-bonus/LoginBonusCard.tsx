@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Gift } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { formatGrowthNotifications } from "@/lib/game/notifications";
 import { useLevelUp } from "@/components/levelup/LevelUpContext";
 
 export function LoginBonusCard({
@@ -22,7 +21,6 @@ export function LoginBonusCard({
   const [pending, setPending] = useState(false);
   const [claimed, setClaimed] = useState(claimedToday);
   const [error, setError] = useState<string | null>(null);
-  const [notifications, setNotifications] = useState<string[]>([]);
 
   async function handleClaim() {
     setPending(true);
@@ -35,7 +33,6 @@ export function LoginBonusCard({
         return;
       }
       setClaimed(true);
-      setNotifications(formatGrowthNotifications(result));
       reportGrowthResult(result);
       router.refresh();
     } finally {
@@ -64,15 +61,6 @@ export function LoginBonusCard({
         )}
       </CardContent>
       {error && <p className="text-destructive px-4 pb-3 text-sm">{error}</p>}
-      {notifications.length > 0 && (
-        <div className="flex flex-col gap-0.5 px-4 pb-3">
-          {notifications.map((line) => (
-            <p key={line} className="text-primary text-xs font-medium">
-              {line}
-            </p>
-          ))}
-        </div>
-      )}
     </Card>
   );
 }

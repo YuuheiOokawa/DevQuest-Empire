@@ -43,22 +43,22 @@ const BUILDING_ICONS: Record<string, LucideIcon> = {
   school: School,
   workshop: Wrench,
   watchtower: Tent,
-  // Tier3: 大きな町
+  // Tier3: 都市
   cathedral: Church,
   arena: Swords,
   harbor: Anchor,
   observatory: Telescope,
-  // Tier4: 帝国
+  // Tier4: 王国
   grand_library: LibraryBig,
   colosseum: Building,
   senate: Landmark,
   shipyard: Ship,
-  // Tier5: 王国
+  // Tier5: 帝国
   royal_palace: Crown,
   great_academy: GraduationCap,
   trade_hub: Handshake,
   monastery: Church,
-  // Tier6: 国
+  // Tier6: 天空帝国
   imperial_capital: Crown,
   world_tree: Sparkles,
   grand_colosseum: Building,
@@ -85,22 +85,22 @@ const BUILDING_COLORS: Record<string, string> = {
   school: "bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400",
   workshop: "bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300",
   watchtower: "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-400",
-  // Tier3: 大きな町(紫寄り)
+  // Tier3: 都市(紫寄り)
   cathedral: "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-400",
   arena: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400",
   harbor: "bg-blue-200 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
   observatory: "bg-indigo-200 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300",
-  // Tier4: 帝国(華やかな色)
+  // Tier4: 王国(華やかな色)
   grand_library: "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-950 dark:text-fuchsia-400",
   colosseum: "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400",
   senate: "bg-purple-200 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
   shipyard: "bg-cyan-200 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300",
-  // Tier5: 王国(金色寄り)
+  // Tier5: 帝国(金色寄り)
   royal_palace: "bg-amber-200 text-amber-800 dark:bg-amber-900 dark:text-amber-300",
   great_academy: "bg-teal-200 text-teal-800 dark:bg-teal-900 dark:text-teal-300",
   trade_hub: "bg-orange-200 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
   monastery: "bg-violet-200 text-violet-800 dark:bg-violet-900 dark:text-violet-300",
-  // Tier6: 国(最も豪華な金色)
+  // Tier6: 天空帝国(最も豪華な金色)
   imperial_capital: "bg-gradient-to-br from-amber-300 to-yellow-500 text-white",
   world_tree: "bg-gradient-to-br from-emerald-300 to-teal-500 text-white",
   grand_colosseum: "bg-gradient-to-br from-rose-300 to-red-500 text-white",

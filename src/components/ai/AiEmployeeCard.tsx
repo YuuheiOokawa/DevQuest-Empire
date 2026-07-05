@@ -16,7 +16,7 @@ export function AiEmployeeCard() {
           <Badge variant="secondary">構想中</Badge>
         </div>
         <p className="text-muted-foreground text-sm">
-          村が「王国」以上に発展すると、ワールドにAI社員が登場します。将来的にはAI社員があなたの代わりに
+          村が「帝国」以上に発展すると、ワールドにAI社員が登場します。将来的にはAI社員があなたの代わりに
           コードレビューや学習提案を行う経営シミュレーションへ拡張予定です。
         </p>
       </CardContent>

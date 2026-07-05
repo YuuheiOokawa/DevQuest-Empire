@@ -13,14 +13,14 @@ const TIER_TEXT_COLOR: Record<number, string> = {
   6: "text-yellow-500",
 };
 
-const TIER_NAMES = ["村", "小さな町", "大きな町", "都市", "大都市", "国"];
+const TIER_NAMES = ["村", "町", "都市", "王国", "帝国", "天空帝国"];
 const TIER_SHORT_DESCRIPTION = [
   "牧歌的な草原に建つ基礎施設",
   "交易が始まる生活施設",
   "夕暮れに輝く商業・文化施設",
   "城壁都市を支える中核施設",
   "高度文明を象徴する大型施設",
-  "国家の威光を示す最高施設",
+  "天空に浮かぶ帝国の威光を示す最高施設",
 ];
 
 export function BuildingDetailPopup({

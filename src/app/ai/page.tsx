@@ -6,10 +6,14 @@ import { getActivitySummary } from "@/lib/game/activity";
 import { computeActivityMetrics } from "@/lib/game/metrics";
 import { getSettlementInfo } from "@/lib/game/buildings";
 import { getQualificationsView } from "@/lib/game/qualifications";
+import { getOrCreateTodaysQuest } from "@/lib/game/quest";
+import { recalcLevel } from "@/lib/game/exp";
+import { getActivitySummarySince, getActivityHeatmap } from "@/services/githubService";
 import {
   getLearningSuggestion,
   getCertificationSuggestion,
   getWorldAdvice,
+  getLevelUpSuggestion,
 } from "@/lib/ai/suggestions";
 import { AppShell } from "@/components/layout/AppShell";
 import { AiAssistantPanel } from "@/components/ai/AiAssistantPanel";
@@ -18,6 +22,7 @@ import { GithubAnalysisCard } from "@/components/ai/GithubAnalysisCard";
 import { LearningSuggestionCard } from "@/components/ai/LearningSuggestionCard";
 import { CertificationSuggestionCard } from "@/components/ai/CertificationSuggestionCard";
 import { WorldAdviceCard } from "@/components/ai/WorldAdviceCard";
+import { LevelUpSuggestionCard } from "@/components/ai/LevelUpSuggestionCard";
 
 export default async function AiPage() {
   const session = await auth();
@@ -28,16 +33,26 @@ export default async function AiPage() {
 
   const player = await prisma.player.findUniqueOrThrow({ where: { userId } });
 
-  const [activity, settlement, qualifications, metrics] = await Promise.all([
-    getActivitySummary(userId),
-    getSettlementInfo(userId),
-    getQualificationsView(userId),
-    computeActivityMetrics(userId, player.level),
-  ]);
+  const [activity, settlement, qualifications, metrics, last30Days, heatmap, todaysQuest] =
+    await Promise.all([
+      getActivitySummary(userId),
+      getSettlementInfo(userId),
+      getQualificationsView(userId),
+      computeActivityMetrics(userId, player.level),
+      getActivitySummarySince(userId, 30),
+      getActivityHeatmap(userId, 84),
+      getOrCreateTodaysQuest(userId),
+    ]);
 
+  const { currentExp, expToNextLevel } = recalcLevel(player.exp);
   const learningSuggestion = getLearningSuggestion(metrics);
   const certificationSuggestion = getCertificationSuggestion(qualifications);
   const worldAdvice = getWorldAdvice(settlement);
+  const levelUpSuggestion = getLevelUpSuggestion(
+    currentExp,
+    expToNextLevel,
+    todaysQuest.status === "completed"
+  );
 
   return (
     <AppShell>
@@ -58,16 +73,28 @@ export default async function AiPage() {
           learningSuggestion={learningSuggestion}
           certificationSuggestion={`${certificationSuggestion.title} — ${certificationSuggestion.description}`}
           worldAdvice={worldAdvice}
+          levelUpSuggestion={levelUpSuggestion}
+        />
+
+        <GithubAnalysisCard
+          activity={activity}
+          last30Days={last30Days}
+          heatmap={heatmap}
         />
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <GithubAnalysisCard activity={activity} />
           <LearningSuggestionCard suggestion={learningSuggestion} />
           <CertificationSuggestionCard suggestion={certificationSuggestion} />
           <WorldAdviceCard advice={worldAdvice} />
+          <LevelUpSuggestionCard suggestion={levelUpSuggestion} />
         </div>
 
         <AiEmployeeCard />
+
+        <p className="text-muted-foreground text-center text-xs">
+          学習提案・資格提案・発展提案・レベルアップ提案は無料のルールベースロジックで生成しています。
+          将来的にOpenAI/Gemini/Claude等の有料APIと連携し、より柔軟な対話・提案に拡張する構想です(未実装・費用発生のため導入は別途判断)。
+        </p>
       </main>
     </AppShell>
   );

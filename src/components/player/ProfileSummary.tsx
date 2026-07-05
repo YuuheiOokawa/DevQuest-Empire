@@ -8,7 +8,8 @@ export function ProfileSummary({
   equippedTitle,
   settlement,
   level,
-  companyRank,
+  levelTitle,
+  levelRank,
   currentExp,
   expToNextLevel,
 }: {
@@ -16,7 +17,8 @@ export function ProfileSummary({
   equippedTitle: string | null;
   settlement: SettlementInfo | null;
   level: number;
-  companyRank: string;
+  levelTitle: string;
+  levelRank: string;
   currentExp: number;
   expToNextLevel: number;
 }) {
@@ -33,7 +35,8 @@ export function ProfileSummary({
             )}
             <h2 className="truncate text-xl font-bold">{name}</h2>
             <p className="text-muted-foreground text-sm">
-              {settlement?.roleName ?? "村の青年"} ・ Lv.{level} ・ {companyRank}
+              {settlement?.roleName ?? "村の青年"} ・ Lv.{level}({levelRank}) ・{" "}
+              {levelTitle}
             </p>
           </div>
         </div>

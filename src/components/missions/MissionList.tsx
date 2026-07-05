@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { missionIcon } from "@/lib/game/rewardIcons";
-import { formatGrowthNotifications } from "@/lib/game/notifications";
 import { useLevelUp } from "@/components/levelup/LevelUpContext";
 
 export type MissionItem = {
@@ -36,9 +35,6 @@ export function MissionList({
   const [missions, setMissions] = useState(initialMissions);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notifications, setNotifications] = useState<Record<string, string[]>>(
-    {}
-  );
 
   async function handleClaim(missionId: string) {
     setPendingId(missionId);
@@ -55,10 +51,6 @@ export function MissionList({
       setMissions((prev) =>
         prev.map((m) => (m.id === missionId ? { ...m, claimed: true, claimable: false } : m))
       );
-      setNotifications((prev) => ({
-        ...prev,
-        [missionId]: formatGrowthNotifications(result),
-      }));
       reportGrowthResult(result);
       router.refresh();
     } finally {
@@ -150,11 +142,6 @@ export function MissionList({
                     </Button>
                   ) : null}
                 </div>
-                {notifications[mission.id]?.map((line) => (
-                  <p key={line} className="text-primary text-xs font-medium">
-                    {line}
-                  </p>
-                ))}
               </CardContent>
             </Card>
           );
