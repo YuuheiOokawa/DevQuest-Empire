@@ -37,7 +37,10 @@ function monthPeriodKey(): string {
 }
 
 function periodStartAndKey(period: string): { start: Date; key: string } {
-  if (period === "weekly") return { start: weekPeriodStart(), key: weekPeriodKey() };
+  // ボス/ダンジョンは週替わり(通常のweeklyミッションより高難度・高報酬)。
+  if (period === "weekly" || period === "boss") {
+    return { start: weekPeriodStart(), key: weekPeriodKey() };
+  }
   if (period === "monthly") return { start: monthPeriodStart(), key: monthPeriodKey() };
   return { start: todayPeriodStart(), key: todayPeriodKey() };
 }

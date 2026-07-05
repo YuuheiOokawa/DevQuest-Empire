@@ -20,13 +20,12 @@ import { DailyMissionSection } from "@/components/adventure/DailyMissionSection"
 import { WeeklyMissionSection } from "@/components/adventure/WeeklyMissionSection";
 import { MonthlyMissionSection } from "@/components/adventure/MonthlyMissionSection";
 import { EventSection } from "@/components/adventure/EventSection";
+import { BossSection } from "@/components/adventure/BossSection";
 import { AdventureHistorySection } from "@/components/adventure/AdventureHistorySection";
 import {
   AdventureCategoryTabs,
   type AdventureCategory,
 } from "@/components/adventure/AdventureCategoryTabs";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 
 export default async function AdventurePage() {
   const session = await auth();
@@ -44,6 +43,7 @@ export default async function AdventurePage() {
   const { level } = recalcLevel(player.exp);
   const { eventTheme } = getSeasonalDefaults(new Date());
   const pastQuests = history.filter((q) => q.id !== todaysQuest.id);
+  const bosses = missions?.filter((m) => m.period === "boss") ?? [];
 
   const categories: AdventureCategory[] = [
     {
@@ -132,20 +132,14 @@ export default async function AdventurePage() {
         )}
 
         <div className="space-y-3">
-          <h2 className="flex items-center gap-1.5 text-lg font-semibold">
-            <Skull className="text-primary size-5" />
-            ボス/ダンジョン
-          </h2>
-          <Card className="border-dashed">
-            <CardContent className="flex items-center justify-between gap-3 py-4">
-              <p className="text-muted-foreground text-sm">
-                強力なボスに挑む機能は近日公開予定です。お楽しみに。
-              </p>
-              <Badge variant="secondary" className="shrink-0">
-                近日公開
-              </Badge>
-            </CardContent>
-          </Card>
+          <div className="flex items-center justify-between">
+            <h2 className="flex items-center gap-1.5 text-lg font-semibold">
+              <Skull className="text-primary size-5" />
+              ボス/ダンジョン
+            </h2>
+            <span className="text-muted-foreground text-xs">週替わり討伐</span>
+          </div>
+          <BossSection bosses={bosses} />
         </div>
 
         <AdventureHistorySection quests={pastQuests} />

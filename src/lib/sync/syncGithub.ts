@@ -32,6 +32,138 @@ function isToday(date: Date): boolean {
 // GitHub APIのレート制限を圧迫しないよう、同期の連打を防ぐクールダウン。
 const SYNC_COOLDOWN_MS = 60 * 1000;
 
+type RepositoryRecord = {
+  id: string;
+  fullName: string;
+  lastSyncedAt: Date | null;
+};
+
+type RepositorySyncStats = {
+  newCommits: number;
+  newIssues: number;
+  newPullRequests: number;
+  expGained: number;
+  hasActivityToday: boolean;
+};
+
+/**
+ * 1リポジトリ分のcommit/issue/prを取得してDBに反映する。
+ * ここで投げた例外はsyncGithubForUser側でキャッチし、そのリポジトリだけ
+ * スキップして他のリポジトリの同期は継続する(1つの不整合が全体を止めない)。
+ */
+async function syncRepository(
+  octokit: Awaited<ReturnType<typeof getOctokitForUser>>,
+  githubLogin: string,
+  repository: RepositoryRecord
+): Promise<RepositorySyncStats> {
+  const [owner, repo] = repository.fullName.split("/");
+  const since = repository.lastSyncedAt ?? undefined;
+
+  const stats: RepositorySyncStats = {
+    newCommits: 0,
+    newIssues: 0,
+    newPullRequests: 0,
+    expGained: 0,
+    hasActivityToday: false,
+  };
+
+  // --- Commit ---
+  const commits = await fetchCommits(octokit, owner, repo, githubLogin, since);
+  if (commits.some((c) => isToday(c.committedAt))) {
+    stats.hasActivityToday = true;
+  }
+  if (commits.length > 0) {
+    const result = await prisma.githubCommit.createMany({
+      data: commits.map((c) => ({
+        repositoryId: repository.id,
+        sha: c.sha,
+        message: c.message,
+        committedAt: c.committedAt,
+        expAwarded: EXP_RATES.commit,
+      })),
+      skipDuplicates: true,
+    });
+    stats.newCommits += result.count;
+    stats.expGained += result.count * EXP_RATES.commit;
+  }
+
+  // --- Issue (close) ---
+  const issues = await fetchClosedIssues(octokit, owner, repo, githubLogin, since);
+  if (issues.some((i) => i.closedAt && isToday(i.closedAt))) {
+    stats.hasActivityToday = true;
+  }
+  if (issues.length > 0) {
+    const result = await prisma.githubIssue.createMany({
+      data: issues.map((i) => ({
+        repositoryId: repository.id,
+        issueNumber: i.issueNumber,
+        state: i.state,
+        closedAt: i.closedAt,
+        expAwarded: EXP_RATES.issueClose,
+      })),
+      skipDuplicates: true,
+    });
+    stats.newIssues += result.count;
+    stats.expGained += result.count * EXP_RATES.issueClose;
+  }
+
+  // --- Pull Request ---
+  // PRは「作成」と「後日マージ」で別々にEXPを付与するため、
+  // createMany一括ではなく既存レコードの有無で処理を分ける。
+  const pullRequests = await fetchPullRequestsByUser(
+    octokit,
+    owner,
+    repo,
+    githubLogin,
+    since
+  );
+  if (pullRequests.some((pr) => isToday(pr.createdAt))) {
+    stats.hasActivityToday = true;
+  }
+  for (const pr of pullRequests) {
+    const existing = await prisma.githubPullRequest.findUnique({
+      where: {
+        repositoryId_prNumber: {
+          repositoryId: repository.id,
+          prNumber: pr.prNumber,
+        },
+      },
+    });
+
+    if (!existing) {
+      const expAwarded = EXP_RATES.prOpen + (pr.mergedAt ? EXP_RATES.prMerge : 0);
+      await prisma.githubPullRequest.create({
+        data: {
+          repositoryId: repository.id,
+          prNumber: pr.prNumber,
+          state: pr.state,
+          mergedAt: pr.mergedAt,
+          expAwarded,
+        },
+      });
+      stats.newPullRequests += 1;
+      stats.expGained += expAwarded;
+    } else if (!existing.mergedAt && pr.mergedAt) {
+      await prisma.githubPullRequest.update({
+        where: { id: existing.id },
+        data: {
+          state: pr.state,
+          mergedAt: pr.mergedAt,
+          expAwarded: existing.expAwarded + EXP_RATES.prMerge,
+        },
+      });
+      stats.expGained += EXP_RATES.prMerge;
+    }
+  }
+
+  await prisma.githubRepository.update({
+    where: { id: repository.id },
+    data: { lastSyncedAt: new Date() },
+  });
+
+  return stats;
+}
+
 /**
  * GitHub同期処理。フローの根拠: 18_Phase3_Detailed_Design.md Part5
  * 1. syncEnabledなリポジトリを取得
@@ -74,103 +206,18 @@ export async function syncGithubForUser(userId: string): Promise<SyncResult> {
   let hasActivityToday = false;
 
   for (const repository of repositories) {
-    const [owner, repo] = repository.fullName.split("/");
-    const since = repository.lastSyncedAt ?? undefined;
-
-    // --- Commit ---
-    const commits = await fetchCommits(octokit, owner, repo, githubLogin, since);
-    if (commits.some((c) => isToday(c.committedAt))) {
-      hasActivityToday = true;
+    try {
+      const stats = await syncRepository(octokit, githubLogin, repository);
+      newCommits += stats.newCommits;
+      newIssues += stats.newIssues;
+      newPullRequests += stats.newPullRequests;
+      expGained += stats.expGained;
+      if (stats.hasActivityToday) hasActivityToday = true;
+    } catch (err) {
+      // 1つのリポジトリの取得失敗(削除・リネーム・権限喪失等)で同期全体を
+      // 失敗させない。lastSyncedAtは更新しないので、次回同期時に再試行される。
+      console.error(`github sync failed for repository ${repository.fullName}`, err);
     }
-    if (commits.length > 0) {
-      const result = await prisma.githubCommit.createMany({
-        data: commits.map((c) => ({
-          repositoryId: repository.id,
-          sha: c.sha,
-          message: c.message,
-          committedAt: c.committedAt,
-          expAwarded: EXP_RATES.commit,
-        })),
-        skipDuplicates: true,
-      });
-      newCommits += result.count;
-      expGained += result.count * EXP_RATES.commit;
-    }
-
-    // --- Issue (close) ---
-    const issues = await fetchClosedIssues(octokit, owner, repo, githubLogin, since);
-    if (issues.some((i) => i.closedAt && isToday(i.closedAt))) {
-      hasActivityToday = true;
-    }
-    if (issues.length > 0) {
-      const result = await prisma.githubIssue.createMany({
-        data: issues.map((i) => ({
-          repositoryId: repository.id,
-          issueNumber: i.issueNumber,
-          state: i.state,
-          closedAt: i.closedAt,
-          expAwarded: EXP_RATES.issueClose,
-        })),
-        skipDuplicates: true,
-      });
-      newIssues += result.count;
-      expGained += result.count * EXP_RATES.issueClose;
-    }
-
-    // --- Pull Request ---
-    // PRは「作成」と「後日マージ」で別々にEXPを付与するため、
-    // createMany一括ではなく既存レコードの有無で処理を分ける。
-    const pullRequests = await fetchPullRequestsByUser(
-      octokit,
-      owner,
-      repo,
-      githubLogin,
-      since
-    );
-    if (pullRequests.some((pr) => isToday(pr.createdAt))) {
-      hasActivityToday = true;
-    }
-    for (const pr of pullRequests) {
-      const existing = await prisma.githubPullRequest.findUnique({
-        where: {
-          repositoryId_prNumber: {
-            repositoryId: repository.id,
-            prNumber: pr.prNumber,
-          },
-        },
-      });
-
-      if (!existing) {
-        const expAwarded =
-          EXP_RATES.prOpen + (pr.mergedAt ? EXP_RATES.prMerge : 0);
-        await prisma.githubPullRequest.create({
-          data: {
-            repositoryId: repository.id,
-            prNumber: pr.prNumber,
-            state: pr.state,
-            mergedAt: pr.mergedAt,
-            expAwarded,
-          },
-        });
-        newPullRequests += 1;
-        expGained += expAwarded;
-      } else if (!existing.mergedAt && pr.mergedAt) {
-        await prisma.githubPullRequest.update({
-          where: { id: existing.id },
-          data: {
-            state: pr.state,
-            mergedAt: pr.mergedAt,
-            expAwarded: existing.expAwarded + EXP_RATES.prMerge,
-          },
-        });
-        expGained += EXP_RATES.prMerge;
-      }
-    }
-
-    await prisma.githubRepository.update({
-      where: { id: repository.id },
-      data: { lastSyncedAt: new Date() },
-    });
   }
 
   const updatedPlayer = await prisma.player.update({
