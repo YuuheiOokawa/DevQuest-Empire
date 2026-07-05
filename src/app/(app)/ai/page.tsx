@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { Bot } from "lucide-react";
+import Link from "next/link";
+import { Bot, Building2, ChevronRight } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getActivitySummary } from "@/lib/game/activity";
@@ -25,6 +26,7 @@ import { CertificationSuggestionCard } from "@/components/ai/CertificationSugges
 import { WorldAdviceCard } from "@/components/ai/WorldAdviceCard";
 import { LevelUpSuggestionCard } from "@/components/ai/LevelUpSuggestionCard";
 import { NextProjectCard } from "@/components/ai/NextProjectCard";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default async function AiPage() {
   const session = await auth();
@@ -105,6 +107,29 @@ export default async function AiPage() {
       </div>
 
       <NextProjectCard suggestions={nextProjectSuggestions} />
+
+      {/* AI会社経営への入口 */}
+      <Link href="/ai-company">
+        <Card className="border-emerald-300 bg-gradient-to-r from-emerald-50 via-teal-50 to-sky-50 transition-transform hover:-translate-y-0.5 dark:border-emerald-800 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-sky-950/30">
+          <CardContent className="flex items-center gap-3 py-4">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/30">
+              <Building2 className="size-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="flex items-center gap-1 font-bold">
+                AI会社経営
+                <span className="rounded-md bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  NEW
+                </span>
+              </h3>
+              <p className="text-muted-foreground text-xs">
+                AI社員たちがアプリを企画・開発・リリース。あなたは社長として会社を育てましょう。
+              </p>
+            </div>
+            <ChevronRight className="text-muted-foreground size-5 shrink-0" />
+          </CardContent>
+        </Card>
+      </Link>
 
       <AiEmployeeCard result={aiEmployees} />
 
