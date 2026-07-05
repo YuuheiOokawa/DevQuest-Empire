@@ -16,7 +16,7 @@ function ForestRing({ tier, radius, treeTint }: { tier: number; radius: number; 
         const scale = 0.55 + seededRandom(seed * 5) * 0.55;
         return (
           <group key={i} position={[Math.cos(angle) * r, 0, Math.sin(angle) * r]} scale={scale}>
-            <Tree3D p={treePalette} opts={{ archetype: "tree" }} tint={treeTint} />
+            <Tree3D p={treePalette} opts={{ archetype: "tree" }} tint={treeTint} seed={seed} />
           </group>
         );
       })}
