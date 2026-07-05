@@ -293,10 +293,13 @@ model StudyLog {
 }
 
 model QualificationMaster {
-  id       String @id @default(cuid())
-  type     String @unique
-  name     String
-  category String
+  id               String @id @default(cuid())
+  type             String @unique
+  name             String
+  category         String
+  difficulty       String @default("normal") // "easy" | "normal" | "hard" | "expert"
+  recommendedOrder Int    @default(0) // カテゴリ内でのおすすめ学習順(小さいほど先)
+  expReward        Int    @default(500) // 合格時に獲得するEXP(難易度に応じて変動)
 
   playerQualifications PlayerQualification[]
 }
@@ -307,7 +310,7 @@ model PlayerQualification {
   player                Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
   qualificationMasterId String
   qualificationMaster   QualificationMaster @relation(fields: [qualificationMasterId], references: [id])
-  status                String    @default("planning") // "planning" | "passed"
+  status                String    @default("planning") // "learning" | "planning" | "passed" | "failed" | "on_hold"
   examDate              DateTime? @db.Date
   passedDate            DateTime? @db.Date
   memo                  String?

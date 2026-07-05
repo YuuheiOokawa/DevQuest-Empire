@@ -8,6 +8,16 @@ export class GithubTokenMissingError extends Error {
   }
 }
 
+/** 同期の連打を防ぐためのクールダウン中に投げるエラー。 */
+export class SyncCooldownError extends Error {
+  readonly retryAfterSeconds: number;
+  constructor(retryAfterSeconds: number) {
+    super(`同期のクールダウン中です(あと${retryAfterSeconds}秒)`);
+    this.name = "SyncCooldownError";
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
 export async function getOctokitForUser(userId: string): Promise<Octokit> {
   const account = await prisma.account.findFirst({
     where: { userId, provider: "github" },
@@ -27,6 +37,9 @@ export async function getOctokitForUser(userId: string): Promise<Octokit> {
 export function describeGithubError(error: unknown): string {
   if (error instanceof GithubTokenMissingError) {
     return "GitHub連携が切れています。設定画面から再度連携してください。";
+  }
+  if (error instanceof SyncCooldownError) {
+    return `同期は少し間隔を空けて行ってください(あと約${error.retryAfterSeconds}秒)。`;
   }
   const status = (error as { status?: number } | null)?.status;
   if (status === 403 || status === 429) {

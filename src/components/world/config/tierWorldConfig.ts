@@ -84,7 +84,7 @@ export const TIER_WORLD_CONFIG: Record<Tier, TierWorldConfig> = {
     effects: { smoke: true, flags: false, waterShimmer: false, windowsGlow: false, sparkles: false },
   },
   2: {
-    name: "小さな町",
+    name: "町",
     role: "交易が生まれる町",
     description: "道路と橋が整い、商店・広場・教会が見え始める。建物数と密度が一段増える。",
     palette: { wall: "#d3cabd", roof: "#b5502e", trim: "#7d7566", window: "#6fa2cf", accent: "#2563eb" },
@@ -102,7 +102,7 @@ export const TIER_WORLD_CONFIG: Record<Tier, TierWorldConfig> = {
     effects: { smoke: true, flags: true, waterShimmer: false, windowsGlow: false, sparkles: false },
   },
   3: {
-    name: "大きな町",
+    name: "都市",
     role: "商業と文化の発展",
     description: "夕暮れのグラデーション、星の出始め、暖色の窓明かり。市場・工房・ギルドが密集。",
     palette: { wall: "#c07a5c", roof: "#334155", trim: "#4a3527", window: "#f2c94c", accent: "#7c3aed" },
@@ -120,8 +120,8 @@ export const TIER_WORLD_CONFIG: Record<Tier, TierWorldConfig> = {
     effects: { smoke: true, flags: true, waterShimmer: true, windowsGlow: true, sparkles: false },
   },
   4: {
-    name: "都市",
-    role: "城壁を持つ都市",
+    name: "王国",
+    role: "城壁を持つ王国の都",
     description: "夜空と星、城壁、門、塔、街灯。外周は防衛線、中心は広場と行政区になる。",
     palette: { wall: "#f1e4e0", roof: "#294565", trim: "#ffffff", window: "#f2c94c", accent: "#e11d48" },
     groundColor: "#958477",
@@ -139,7 +139,7 @@ export const TIER_WORLD_CONFIG: Record<Tier, TierWorldConfig> = {
     effects: { smoke: false, flags: true, waterShimmer: true, windowsGlow: true, sparkles: true },
   },
   5: {
-    name: "大都市",
+    name: "帝国",
     role: "高度文明の中心",
     description: "深い夜空、巨大ドーム、大学・劇場・銀行・港。建物は高く密集し、街全体が輝く。",
     palette: { wall: "#f7ecd1", roof: "#d4a017", trim: "#c9a227", window: "#fff2c2", accent: "#f59e0b" },
@@ -158,9 +158,9 @@ export const TIER_WORLD_CONFIG: Record<Tier, TierWorldConfig> = {
     effects: { smoke: false, flags: true, waterShimmer: true, windowsGlow: true, sparkles: true },
   },
   6: {
-    name: "国",
+    name: "天空帝国",
     role: "黄金の空に包まれた繁栄の頂点",
-    description: "黄金の空、放射光、瞬く星、巨大王城、宮殿、神殿。都市全体が一つの国家として完成。",
+    description: "黄金の空、放射光、瞬く星、巨大王城、宮殿、神殿。都市全体が一つの天空帝国として完成。",
     palette: { wall: "#fff6dd", roof: "#f0c419", trim: "#ffe066", window: "#fff8e0", accent: "#facc15" },
     groundColor: "#d7bd72",
     secondaryGroundColor: "#f0dfa0",

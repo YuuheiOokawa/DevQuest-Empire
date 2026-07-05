@@ -83,7 +83,7 @@ export default async function WorldPage() {
               {settlement ? settlement.tierName : "村"}
             </h1>
             <p className="text-muted-foreground text-sm">
-              GitHub活動・学習・資格・ミッションの積み重ねで、村はやがて国へと発展します。
+              GitHub活動・学習・資格・ミッションの積み重ねで、村はやがて天空帝国へと発展します。
             </p>
           </div>
 

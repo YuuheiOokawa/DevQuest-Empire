@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import type { VillageBuildingView } from "@/lib/game/buildings";
 
-const TIER_NAMES = ["村", "小さな町", "大きな町", "都市", "大都市", "国"];
+const TIER_NAMES = ["村", "町", "都市", "王国", "帝国", "天空帝国"];
 
 // カードの左端の色をティアごとに変え、施設が発展するほど豪華な色味になるようにする。
 const TIER_ACCENT_BORDER: Record<number, string> = {

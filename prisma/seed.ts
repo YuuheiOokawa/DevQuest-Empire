@@ -6,7 +6,7 @@ import { prisma } from "../src/lib/prisma";
 
 // 各建物はmetric(ActivityMetricsのキー)とthresholds(レベルごとの閾値、
 // 配列の長さ=最大レベル)で成長する。根拠: 18_Phase3 Part2をPhase5で拡張。
-// requiredTierは村の発展段階(1:村 2:町 3:大きな町 4:帝国 5:王国 6:国)。
+// requiredTierは村の発展段階(1:村 2:町 3:都市 4:王国 5:帝国 6:天空帝国)。
 // 現在の発展段階以下の建物のみが村画面に出現する(lib/game/settlement.ts参照)。
 const buildingMasters = [
   // --- Tier1: 村 ---
@@ -237,7 +237,7 @@ const buildingMasters = [
     sortOrder: 13,
   },
 
-  // --- Tier3: 大きな町 ---
+  // --- Tier3: 都市 ---
   {
     type: "cathedral",
     name: "大聖堂",
@@ -249,7 +249,7 @@ const buildingMasters = [
       "資格という信仰に人々が集い始めた。",
       "荘厳な聖堂として姿を整えてきた。",
       "多くの信者(有資格者)を集める聖地に。",
-      "大きな町を象徴する大聖堂として完成。",
+      "都市を象徴する大聖堂として完成。",
     ],
     requiredTier: 3,
     sortOrder: 14,
@@ -303,19 +303,19 @@ const buildingMasters = [
     sortOrder: 17,
   },
 
-  // --- Tier4: 帝国 ---
+  // --- Tier4: 王国 ---
   {
     type: "grand_library",
     name: "大図書館",
-    description: "帝国の叡智を蓄える大図書館。",
+    description: "王国の叡智を蓄える大図書館。",
     metric: "studyMinutesTotal",
     thresholds: [2000, 3000, 4500, 6500, 9000],
     flavorTexts: [
-      "帝国の知の礎となる図書館が開館。",
+      "王国の知の礎となる図書館が開館。",
       "蔵書が増え続け、学者が集い始めた。",
-      "帝国中の叡智が集まる場所に成長。",
+      "王国中の叡智が集まる場所に成長。",
       "貴重な文献も揃う一大知識庫へ。",
-      "帝国の叡智を象徴する大図書館に。",
+      "王国の叡智を象徴する大図書館に。",
     ],
     requiredTier: 4,
     sortOrder: 18,
@@ -323,15 +323,15 @@ const buildingMasters = [
   {
     type: "colosseum",
     name: "大闘技場",
-    description: "帝国中のコミットを称える大闘技場。",
+    description: "王国中のコミットを称える大闘技場。",
     metric: "commitCount",
     thresholds: [300, 450, 650, 900, 1200],
     flavorTexts: [
-      "帝国の威信をかけた闘技場が完成。",
+      "王国の威信をかけた闘技場が完成。",
       "コミットの積み重ねを称える催しが人気に。",
-      "帝国中から観客が集まる会場へ成長。",
+      "王国中から観客が集まる会場へ成長。",
       "歴史に残る名勝負が繰り広げられる場に。",
-      "帝国の誇りを象徴する大闘技場として完成。",
+      "王国の誇りを象徴する大闘技場として完成。",
     ],
     requiredTier: 4,
     sortOrder: 19,
@@ -345,9 +345,9 @@ const buildingMasters = [
     flavorTexts: [
       "課題解決の功績者が集う元老院が発足。",
       "重要な議論が交わされる場になった。",
-      "帝国の意思決定を担う機関へ成長。",
+      "王国の意思決定を担う機関へ成長。",
       "多くの功績者が名を連ねる誉れの場に。",
-      "帝国の英知を結集した元老院として完成。",
+      "王国の英知を結集した元老院として完成。",
     ],
     requiredTier: 4,
     sortOrder: 20,
@@ -355,31 +355,31 @@ const buildingMasters = [
   {
     type: "shipyard",
     name: "造船所",
-    description: "帝国の成果を運ぶ船を造る造船所。",
+    description: "王国の成果を運ぶ船を造る造船所。",
     metric: "prMergeCount",
     thresholds: [150, 220, 300, 400, 520],
     flavorTexts: [
-      "帝国の造船所が産声を上げた。",
+      "王国の造船所が産声を上げた。",
       "マージされた成果を運ぶ船が造られ始めた。",
       "遠洋まで航行できる船を造る技術に成長。",
-      "帝国の物流を支える一大拠点へ。",
+      "王国の物流を支える一大拠点へ。",
       "世界中に成果を届ける大造船所として完成。",
     ],
     requiredTier: 4,
     sortOrder: 21,
   },
 
-  // --- Tier5: 王国 ---
+  // --- Tier5: 帝国 ---
   {
     type: "royal_palace",
     name: "王宮",
-    description: "王国の頂点、プレイヤー自身の成長を映す王宮。",
+    description: "帝国の頂点、プレイヤー自身の成長を映す王宮。",
     metric: "level",
     thresholds: [25, 30, 35, 40, 50],
     flavorTexts: [
-      "王国の中心、王宮の礎が築かれた。",
+      "帝国の中心、王宮の礎が築かれた。",
       "壮麗な装飾が施され始めた。",
-      "王国中から人々が仰ぎ見る存在に成長。",
+      "帝国中から人々が仰ぎ見る存在に成長。",
       "王の威光を体現する荘厳な宮殿へ。",
       "プレイヤー自身の到達点を象徴する王宮に。",
     ],
@@ -389,15 +389,15 @@ const buildingMasters = [
   {
     type: "great_academy",
     name: "大アカデミー",
-    description: "王国の未来を担う人材を育てる大アカデミー。",
+    description: "帝国の未来を担う人材を育てる大アカデミー。",
     metric: "qualificationsPassedCount",
     thresholds: [5, 6, 7, 8, 10],
     flavorTexts: [
-      "王国の未来を担う大アカデミーが開校。",
+      "帝国の未来を担う大アカデミーが開校。",
       "優秀な生徒が集まり始めた。",
       "多くの分野の専門家を育てる機関に成長。",
-      "王国中から人材が集う名門へ。",
-      "王国の知の頂点として名を馳せる。",
+      "帝国中から人材が集う名門へ。",
+      "帝国の知の頂点として名を馳せる。",
     ],
     requiredTier: 5,
     sortOrder: 23,
@@ -405,15 +405,15 @@ const buildingMasters = [
   {
     type: "trade_hub",
     name: "交易拠点",
-    description: "王国中の提案(Pull Request)が集まる交易拠点。",
+    description: "帝国中の提案(Pull Request)が集まる交易拠点。",
     metric: "prOpenCount",
     thresholds: [150, 220, 300, 400, 520],
     flavorTexts: [
-      "王国の交易拠点が開設された。",
+      "帝国の交易拠点が開設された。",
       "各地からの提案(交易)が集まり始めた。",
-      "王国中の商人が行き交う拠点に成長。",
+      "帝国中の商人が行き交う拠点に成長。",
       "経済の中心地として繁栄を極める。",
-      "王国の富を象徴する一大交易拠点に。",
+      "帝国の富を象徴する一大交易拠点に。",
     ],
     requiredTier: 5,
     sortOrder: 24,
@@ -428,25 +428,25 @@ const buildingMasters = [
       "静寂に包まれた大修道院が建立された。",
       "ミッションの積み重ねを見守り始めた。",
       "多くの修行者が集う場所へ成長。",
-      "王国中から信仰を集める存在に。",
+      "帝国中から信仰を集める存在に。",
       "積み重ねた努力の全てを見守る聖域に。",
     ],
     requiredTier: 5,
     sortOrder: 25,
   },
 
-  // --- Tier6: 国 ---
+  // --- Tier6: 天空帝国 ---
   {
     type: "imperial_capital",
     name: "帝都",
-    description: "国の中心、プレイヤーの集大成である帝都。",
+    description: "天空帝国の中心、プレイヤーの集大成である帝都。",
     metric: "level",
     thresholds: [40, 50, 60, 75, 100],
     flavorTexts: [
-      "国の中心、帝都の建設が始まった。",
+      "天空帝国の中心、帝都の建設が始まった。",
       "壮大な街並みが形成され始めた。",
-      "国中から人々が集う中心地に成長。",
-      "国家の威信を体現する都市へ。",
+      "天空帝国中から人々が集う中心地に成長。",
+      "天空帝国の威信を体現する都市へ。",
       "プレイヤーの集大成たる帝都が完成した。",
     ],
     requiredTier: 6,
@@ -455,15 +455,15 @@ const buildingMasters = [
   {
     type: "world_tree",
     name: "世界樹",
-    description: "国中の学びが集う世界樹。",
+    description: "天空帝国中の学びが集う世界樹。",
     metric: "studyMinutesTotal",
     thresholds: [6000, 9000, 13000, 18000, 25000],
     flavorTexts: [
       "小さな苗木が世界樹として芽吹いた。",
       "枝葉が伸び、多くの学びを受け止め始めた。",
-      "国中の知恵が集う神聖な樹に成長。",
+      "天空帝国中の知恵が集う神聖な樹に成長。",
       "天まで届くほどの大樹へと育った。",
-      "国中の学びが集う世界樹として完成。",
+      "天空帝国中の学びが集う世界樹として完成。",
     ],
     requiredTier: 6,
     sortOrder: 27,
@@ -471,15 +471,15 @@ const buildingMasters = [
   {
     type: "grand_colosseum",
     name: "世界闘技場",
-    description: "国を挙げてコミットを称える世界闘技場。",
+    description: "天空帝国を挙げてコミットを称える世界闘技場。",
     metric: "commitCount",
     thresholds: [800, 1200, 1700, 2400, 3200],
     flavorTexts: [
-      "国を挙げての世界闘技場が開場した。",
+      "天空帝国を挙げての世界闘技場が開場した。",
       "コミットの偉業を称える催しが定着。",
       "世界中から挑戦者が集う舞台に成長。",
-      "国家の威信をかけた大会が行われる場に。",
-      "国を挙げてコミットを称える象徴として完成。",
+      "天空帝国の威信をかけた大会が行われる場に。",
+      "天空帝国を挙げてコミットを称える象徴として完成。",
     ],
     requiredTier: 6,
     sortOrder: 28,
@@ -487,15 +487,15 @@ const buildingMasters = [
   {
     type: "throne_room",
     name: "玉座の間",
-    description: "国王が全ての達成を見守る玉座の間。",
+    description: "天帝が全ての達成を見守る玉座の間。",
     metric: "missionsClaimedTotal",
     thresholds: [200, 280, 380, 500, 650],
     flavorTexts: [
       "玉座の間に最初の光が灯った。",
       "積み重ねた達成が記録され始めた。",
-      "国王が全ての功績を見守る場に成長。",
+      "天帝が全ての功績を見守る場に成長。",
       "数多の達成が刻まれた荘厳な間へ。",
-      "国王が全ての達成を見守る玉座の間として完成。",
+      "天帝が全ての達成を見守る玉座の間として完成。",
     ],
     requiredTier: 6,
     sortOrder: 29,
@@ -723,29 +723,29 @@ const achievementMasters = [
   },
   {
     type: "village_tier_bigtown",
-    name: "大きな町の礎",
-    condition: "村が大きな町以上に発展する",
+    name: "都市の礎",
+    condition: "村が都市以上に発展する",
     unlockCondition: { metric: "villageTier", operator: ">=", value: 3 },
     rarity: "silver",
   },
   {
     type: "village_tier_empire",
-    name: "帝国の礎",
-    condition: "村が帝国以上に発展する",
+    name: "王国の礎",
+    condition: "村が王国以上に発展する",
     unlockCondition: { metric: "villageTier", operator: ">=", value: 4 },
     rarity: "silver",
   },
   {
     type: "village_tier_kingdom",
-    name: "王国の礎",
-    condition: "村が王国以上に発展する",
+    name: "帝国の礎",
+    condition: "村が帝国以上に発展する",
     unlockCondition: { metric: "villageTier", operator: ">=", value: 5 },
     rarity: "gold",
   },
   {
     type: "village_tier_nation",
     name: "建国者",
-    condition: "村が国(最終形態)まで発展する",
+    condition: "村が天空帝国(最終形態)まで発展する",
     unlockCondition: { metric: "villageTier", operator: ">=", value: 6 },
     rarity: "platinum",
   },
@@ -932,7 +932,7 @@ const titleMasters = [
   {
     type: "founding_ruler",
     name: "建国の王",
-    condition: "村が国(最終形態)まで発展する",
+    condition: "村が天空帝国(最終形態)まで発展する",
     unlockCondition: { metric: "villageTier", operator: ">=", value: 6 },
     rarity: "platinum",
   },
@@ -1058,27 +1058,30 @@ const missionMasters = [
   },
 ];
 
+// difficulty: "easy" | "normal" | "hard" | "expert"。expRewardは難易度に応じて
+// 300(easy)/500(normal)/800(hard)/1200(expert)を目安に設定している。
+// recommendedOrderはカテゴリ内でのおすすめ学習順(小さいほど先)。
 const qualificationMasters = [
-  { type: "java_silver", name: "Java Silver (Oracle Certified Java Programmer, Silver)", category: "Java" },
-  { type: "java_gold", name: "Java Gold (Oracle Certified Java Programmer, Gold)", category: "Java" },
-  { type: "itpassport", name: "ITパスポート試験", category: "情報処理" },
-  { type: "fe", name: "基本情報技術者試験", category: "情報処理" },
-  { type: "ap", name: "応用情報技術者試験", category: "情報処理" },
-  { type: "sg", name: "情報セキュリティマネジメント試験", category: "情報処理" },
-  { type: "sc", name: "情報処理安全確保支援士試験", category: "情報処理" },
-  { type: "aws_clf", name: "AWS Certified Cloud Practitioner", category: "AWS" },
-  { type: "aws_saa", name: "AWS Certified Solutions Architect - Associate", category: "AWS" },
-  { type: "aws_dva", name: "AWS Certified Developer - Associate", category: "AWS" },
-  { type: "az900", name: "Microsoft Certified: Azure Fundamentals", category: "Azure" },
-  { type: "az204", name: "Microsoft Certified: Azure Developer Associate", category: "Azure" },
-  { type: "gcp_ace", name: "Google Cloud Associate Cloud Engineer", category: "GCP" },
-  { type: "lpic1", name: "LPIC-1", category: "Linux" },
-  { type: "cka", name: "Certified Kubernetes Administrator", category: "Kubernetes" },
-  { type: "comptia_security_plus", name: "CompTIA Security+", category: "セキュリティ" },
-  { type: "rails_gold", name: "Ruby技術者認定試験 Gold", category: "Ruby" },
-  { type: "python_cert", name: "Python 3 エンジニア認定基礎試験", category: "Python" },
-  { type: "scrum_master", name: "認定スクラムマスター(CSM)", category: "アジャイル" },
-  { type: "pmp", name: "PMP(Project Management Professional)", category: "プロジェクト管理" },
+  { type: "itpassport", name: "ITパスポート試験", category: "情報処理", difficulty: "easy", recommendedOrder: 1, expReward: 300 },
+  { type: "fe", name: "基本情報技術者試験", category: "情報処理", difficulty: "normal", recommendedOrder: 2, expReward: 500 },
+  { type: "ap", name: "応用情報技術者試験", category: "情報処理", difficulty: "hard", recommendedOrder: 3, expReward: 800 },
+  { type: "sg", name: "情報セキュリティマネジメント試験", category: "情報処理", difficulty: "easy", recommendedOrder: 4, expReward: 300 },
+  { type: "sc", name: "情報処理安全確保支援士試験", category: "情報処理", difficulty: "expert", recommendedOrder: 5, expReward: 1200 },
+  { type: "java_silver", name: "Java Silver (Oracle Certified Java Programmer, Silver)", category: "Java", difficulty: "normal", recommendedOrder: 10, expReward: 500 },
+  { type: "java_gold", name: "Java Gold (Oracle Certified Java Programmer, Gold)", category: "Java", difficulty: "hard", recommendedOrder: 11, expReward: 800 },
+  { type: "aws_clf", name: "AWS Certified Cloud Practitioner", category: "AWS", difficulty: "easy", recommendedOrder: 20, expReward: 300 },
+  { type: "aws_saa", name: "AWS Certified Solutions Architect - Associate", category: "AWS", difficulty: "normal", recommendedOrder: 21, expReward: 500 },
+  { type: "aws_dva", name: "AWS Certified Developer - Associate", category: "AWS", difficulty: "normal", recommendedOrder: 22, expReward: 500 },
+  { type: "az900", name: "Microsoft Certified: Azure Fundamentals", category: "Azure", difficulty: "easy", recommendedOrder: 30, expReward: 300 },
+  { type: "az204", name: "Microsoft Certified: Azure Developer Associate", category: "Azure", difficulty: "normal", recommendedOrder: 31, expReward: 500 },
+  { type: "gcp_ace", name: "Google Cloud Associate Cloud Engineer", category: "GCP", difficulty: "normal", recommendedOrder: 40, expReward: 500 },
+  { type: "lpic1", name: "LPIC-1", category: "Linux", difficulty: "normal", recommendedOrder: 50, expReward: 500 },
+  { type: "cka", name: "Certified Kubernetes Administrator", category: "Kubernetes", difficulty: "hard", recommendedOrder: 51, expReward: 800 },
+  { type: "comptia_security_plus", name: "CompTIA Security+", category: "セキュリティ", difficulty: "normal", recommendedOrder: 60, expReward: 500 },
+  { type: "rails_gold", name: "Ruby技術者認定試験 Gold", category: "Ruby", difficulty: "hard", recommendedOrder: 70, expReward: 800 },
+  { type: "python_cert", name: "Python 3 エンジニア認定基礎試験", category: "Python", difficulty: "easy", recommendedOrder: 71, expReward: 300 },
+  { type: "scrum_master", name: "認定スクラムマスター(CSM)", category: "アジャイル", difficulty: "normal", recommendedOrder: 80, expReward: 500 },
+  { type: "pmp", name: "PMP(Project Management Professional)", category: "プロジェクト管理", difficulty: "expert", recommendedOrder: 81, expReward: 1200 },
 ];
 
 async function main() {

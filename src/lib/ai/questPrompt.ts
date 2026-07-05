@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { generateStructured } from "@/lib/ai/claude";
+import { generateDailyQuest } from "@/services/questService";
 
 // 根拠: 18_Phase3_Detailed_Design.md Part4-1
 
@@ -122,8 +123,14 @@ ${recentQuests.map((q) => `- ${q.title}`).join("\n") || "(なし)"}
       expReward: DIFFICULTY_EXP[result.difficulty] ?? DIFFICULTY_EXP.easy,
     };
   } catch (err) {
-    console.error("AI quest generation failed, using fallback quest", err);
-    const fallback = await pickFallbackQuest();
-    return { ...fallback, expReward: DIFFICULTY_EXP[fallback.difficulty] };
+    console.error("AI quest generation failed, using rule-based fallback quest", err);
+    try {
+      const fallback = await generateDailyQuest(userId);
+      return { ...fallback, expReward: DIFFICULTY_EXP[fallback.difficulty] };
+    } catch (fallbackErr) {
+      console.error("Rule-based fallback quest failed, using random fallback", fallbackErr);
+      const fallback = await pickFallbackQuest();
+      return { ...fallback, expReward: DIFFICULTY_EXP[fallback.difficulty] };
+    }
   }
 }

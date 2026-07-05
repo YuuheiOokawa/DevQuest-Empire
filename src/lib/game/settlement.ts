@@ -1,14 +1,14 @@
-// 村の発展段階(村→町→大きな町→帝国→王国→国)の定義。
+// 村の発展段階(村→町→都市→王国→帝国→天空帝国)の定義。
 // 各段階は「ひとつ前の段階に属する建物レベル合計」が閾値に達すると解放される。
-// プレイヤーの役職(青年→村長→町長→帝国王様→王国王様→国王)も段階に連動する。
+// プレイヤーの役職(青年→村長→都市長→国王→皇帝→天帝)も段階に連動する。
 
 export const TIER_DEFINITIONS = [
   { tier: 1, name: "村", role: "村の青年", requiredScoreInPreviousTier: 0 },
   { tier: 2, name: "町", role: "村長", requiredScoreInPreviousTier: 25 },
-  { tier: 3, name: "大きな町", role: "町長", requiredScoreInPreviousTier: 12 },
-  { tier: 4, name: "帝国", role: "帝国王様", requiredScoreInPreviousTier: 12 },
-  { tier: 5, name: "王国", role: "王国王様", requiredScoreInPreviousTier: 12 },
-  { tier: 6, name: "国", role: "国王", requiredScoreInPreviousTier: 12 },
+  { tier: 3, name: "都市", role: "都市長", requiredScoreInPreviousTier: 12 },
+  { tier: 4, name: "王国", role: "国王", requiredScoreInPreviousTier: 12 },
+  { tier: 5, name: "帝国", role: "皇帝", requiredScoreInPreviousTier: 12 },
+  { tier: 6, name: "天空帝国", role: "天帝", requiredScoreInPreviousTier: 12 },
 ] as const;
 
 export const MAX_TIER = 6;

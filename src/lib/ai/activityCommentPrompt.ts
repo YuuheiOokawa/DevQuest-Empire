@@ -3,7 +3,28 @@ import { generateStructured } from "@/lib/ai/claude";
 
 // 根拠: 18_Phase3_Detailed_Design.md Part4-2
 
-const FALLBACK_COMMENT = "今週も活動お疲れさまです。";
+// Claude API(有料・任意設定)が使えない場合のフォールバック。
+// 固定文言ではなく、実際の活動データに基づくルールベースのコメントを生成する。
+function buildRuleBasedComment(
+  thisWeekCommits: number,
+  lastWeekCommits: number,
+  thisWeekIssues: number,
+  thisWeekPrs: number
+): string {
+  if (thisWeekCommits === 0) {
+    return "今週はまだコミットがありません。小さな修正から始めてみましょう。";
+  }
+  if (thisWeekCommits < 3) {
+    return "今日はコミットが少なめです。小さな修正から始めましょう。";
+  }
+  if (lastWeekCommits > 0 && thisWeekCommits > lastWeekCommits) {
+    return `先週(${lastWeekCommits}件)よりコミット数が伸びています。この調子で続けましょう。`;
+  }
+  if (thisWeekIssues > 0 || thisWeekPrs > 0) {
+    return "コミットに加えてIssue対応やPRマージも進んでいて素晴らしいペースです。";
+  }
+  return "今週も安定したペースで活動できています。この調子で継続していきましょう。";
+}
 
 export async function generateActivityComment(userId: string): Promise<string> {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -48,7 +69,7 @@ export async function generateActivityComment(userId: string): Promise<string> {
     });
     return result.comment.slice(0, 80);
   } catch (err) {
-    console.error("AI activity comment generation failed, using fallback", err);
-    return FALLBACK_COMMENT;
+    console.error("AI activity comment generation failed, using rule-based fallback", err);
+    return buildRuleBasedComment(thisWeekCommits, lastWeekCommits, thisWeekIssues, thisWeekPrs);
   }
 }

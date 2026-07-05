@@ -4,19 +4,20 @@ import { TrendingUp, Scroll, Castle } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { recalcLevel } from "@/lib/game/exp";
+import { getLevelBand } from "@/lib/game/levelTable";
 import { getActivitySummary } from "@/lib/game/activity";
 import {
   getVillageBuildingsView,
   getVillageScore,
   getSettlementInfo,
 } from "@/lib/game/buildings";
-import { getCompanyRank } from "@/lib/game/company";
 import { getOrCreateTodaysQuest } from "@/lib/game/quest";
 import { getLoginBonusStatus } from "@/lib/game/loginBonus";
 import { getEquippedTitleName } from "@/lib/game/titles";
 import { getMissionsView } from "@/lib/game/missions";
 import { getQualificationsView } from "@/lib/game/qualifications";
 import { getRecommendedAction } from "@/lib/game/recommendation";
+import { getRecentHighlights } from "@/lib/game/highlights";
 import { AppShell } from "@/components/layout/AppShell";
 import {
   SettlementBadge,
@@ -25,6 +26,7 @@ import {
 import { SyncButton } from "@/components/github/SyncButton";
 import { LoginBonusCard } from "@/components/login-bonus/LoginBonusCard";
 import { RecommendedActionCard } from "@/components/home/RecommendedActionCard";
+import { RecentHighlightsCard } from "@/components/home/RecentHighlightsCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 
@@ -48,6 +50,7 @@ export default async function HomePage() {
     settlement,
     qualifications,
     syncedRepositoryCount,
+    recentHighlights,
   ] = await Promise.all([
     getActivitySummary(userId),
     getVillageBuildingsView(userId),
@@ -58,11 +61,12 @@ export default async function HomePage() {
     getSettlementInfo(userId),
     getQualificationsView(userId),
     prisma.githubRepository.count({ where: { userId, syncEnabled: true } }),
+    getRecentHighlights(userId),
   ]);
 
   const claimableMissionCount = missions?.filter((m) => m.claimable).length ?? 0;
   const villageScore = buildings ? getVillageScore(buildings) : null;
-  const companyRank = getCompanyRank(level);
+  const levelBand = getLevelBand(level);
   const backgroundClass = settlement
     ? (TIER_PAGE_BACKGROUND[settlement.tier] ?? "")
     : "";
@@ -95,8 +99,8 @@ export default async function HomePage() {
                   )}
                   <h1 className="truncate text-2xl font-bold">{player.name}</h1>
                   <p className="text-muted-foreground text-sm">
-                    {settlement?.roleName ?? "村の青年"} ・ Lv.{level} ・{" "}
-                    {companyRank.rank}
+                    {settlement?.roleName ?? "村の青年"} ・ Lv.{level}(
+                    {levelBand.rank}) ・ {levelBand.title}
                   </p>
                 </div>
               </Link>
@@ -112,6 +116,8 @@ export default async function HomePage() {
           </div>
 
           <RecommendedActionCard action={recommendedAction} />
+
+          <RecentHighlightsCard highlights={recentHighlights} />
 
           <LoginBonusCard
             claimedToday={loginBonus.claimedToday}

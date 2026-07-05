@@ -3,12 +3,12 @@ import { User, Trophy, Award, GraduationCap, BarChart3 } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { recalcLevel } from "@/lib/game/exp";
+import { getLevelBand } from "@/lib/game/levelTable";
 import {
   getVillageBuildingsView,
   getVillageScore,
   getSettlementInfo,
 } from "@/lib/game/buildings";
-import { getCompanyRank } from "@/lib/game/company";
 import { getAchievementsView } from "@/lib/game/achievements";
 import { getTitlesView, getEquippedTitleName } from "@/lib/game/titles";
 import { getMissionsView } from "@/lib/game/missions";
@@ -57,7 +57,7 @@ export default async function PlayerPage() {
   ]);
 
   const villageScore = buildings ? getVillageScore(buildings) : null;
-  const companyRank = getCompanyRank(level);
+  const levelBand = getLevelBand(level);
   const backgroundClass = settlement
     ? (TIER_PAGE_BACKGROUND[settlement.tier] ?? "")
     : "";
@@ -85,7 +85,8 @@ export default async function PlayerPage() {
             equippedTitle={equippedTitle}
             settlement={settlement}
             level={level}
-            companyRank={companyRank.rank}
+            levelTitle={levelBand.title}
+            levelRank={levelBand.rank}
             currentExp={currentExp}
             expToNextLevel={expToNextLevel}
           />

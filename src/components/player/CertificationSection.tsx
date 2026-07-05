@@ -17,7 +17,7 @@ export function CertificationSection({
   return (
     <div className="flex flex-col gap-4">
       <p className="text-muted-foreground text-sm">
-        受験予定を管理し、合格すると+500EXPを獲得できます。
+        学習状況を管理し、合格すると難易度に応じたEXPを獲得できます。
       </p>
       <QualificationList initialQualifications={qualifications} />
     </div>
