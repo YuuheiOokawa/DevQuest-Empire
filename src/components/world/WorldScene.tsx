@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Canvas } from "@react-three/fiber";
+import { ACESFilmicToneMapping } from "three";
 import { WORLD_CONFIG } from "./config/worldConfig";
 import { useWorldConfig } from "./hooks/useWorldConfig";
 import { useResponsiveQuality } from "./hooks/useResponsiveQuality";
@@ -73,13 +74,20 @@ export function WorldScene({
       >
         <SkyBackdrop tier={tier} dimming={skyDimming} />
         <Canvas
-          shadows
+          shadows="soft"
           dpr={[1, dpr]}
           camera={{
             position: [0, radius * WORLD_CONFIG.camera.heightFactor, radius * WORLD_CONFIG.camera.distanceFactor],
             fov: WORLD_CONFIG.camera.fov,
           }}
-          gl={{ alpha: true, antialias: true, powerPreference: "high-performance" }}
+          gl={{
+            alpha: true,
+            antialias: true,
+            powerPreference: "high-performance",
+            // 映画的なトーンマッピングで白飛び/色飽和を抑え、質感の階調を残す
+            toneMapping: ACESFilmicToneMapping,
+            toneMappingExposure: 1.1,
+          }}
           style={{ position: "absolute", inset: 0 }}
         >
           <LightingSystem tier={tier} radius={radius} quality={quality} fogOverride={fog} />

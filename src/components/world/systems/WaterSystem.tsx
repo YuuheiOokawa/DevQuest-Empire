@@ -9,7 +9,7 @@ function River({ tier, radius }: { tier: number; radius: number }) {
     <group rotation={[0, Math.PI / 6, 0]}>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, radius * 0.15]}>
         <planeGeometry args={[radius * 2.7, radius * 0.34]} />
-        <meshStandardMaterial color={world.waterColor} transparent opacity={0.78} roughness={0.18} metalness={0.08} />
+        <meshStandardMaterial color={world.waterColor} transparent opacity={0.85} roughness={0.08} metalness={0.45} />
       </mesh>
       {world.layout.hasBridge && (
         <mesh position={[0, 0.07, radius * 0.15]} rotation={[0, Math.PI / 2, 0]} castShadow receiveShadow>
@@ -28,7 +28,7 @@ function MoatAndHarbor({ tier, radius }: { tier: number; radius: number }) {
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.006, 0]}>
         <ringGeometry args={[radius - 0.55, radius - 0.23, 128]} />
-        <meshStandardMaterial color={world.waterColor} transparent opacity={0.7} roughness={0.1} metalness={0.12} side={DoubleSide} />
+        <meshStandardMaterial color={world.waterColor} transparent opacity={0.82} roughness={0.06} metalness={0.5} side={DoubleSide} />
       </mesh>
       {world.layout.hasHarbor && (
         <group
