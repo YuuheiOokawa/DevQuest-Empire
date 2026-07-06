@@ -30,7 +30,7 @@ export function TodayQuestSection({ quest }: { quest: QuestView }) {
           {quest.status === "completed" ? (
             <Badge>達成済み</Badge>
           ) : (
-            <CompleteQuestButton questId={quest.id} />
+            <CompleteQuestButton questId={quest.id} baseExp={quest.expReward} showModeSelector />
           )}
         </CardContent>
       </Card>
