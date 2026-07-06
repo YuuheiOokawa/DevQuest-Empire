@@ -58,6 +58,15 @@ export type MarketInsight = {
   opportunity: string; // そこから導いた機会
 };
 
+// 市場分析(公開情報ベースのルール生成。スクレイピング不使用・将来API差し替え可能)
+export type MarketAnalysis = {
+  marketScale: string; // 市場規模の概観
+  competitors: { name: string; weakness: string }[]; // 競合と弱点
+  differentiation: string[]; // 差別化ポイント
+  mvpValue: string; // MVPで実現する価値
+  monetization: string[]; // 将来の収益化案
+};
+
 export type AppProposal = {
   id: string;
   appName: string;
@@ -77,6 +86,7 @@ export type AppProposal = {
   projectSize: "S" | "M" | "L";
   mvpScope: string[];
   futureScope: string[];
+  market: MarketAnalysis;
 };
 
 export type StudioPhaseId =
@@ -120,17 +130,21 @@ export type StudioPhase = {
 };
 
 export type StudioDocType =
+  | "projectCharter"
   | "readme"
   | "requirements"
   | "architecture"
   | "erDiagram"
   | "apiDesign"
+  | "screenDesign"
   | "folderStructure"
   | "sprintPlan"
+  | "roadmap"
   | "releaseNote"
   | "changeLog"
   | "reviewReport"
-  | "testReport";
+  | "testReport"
+  | "wiki";
 
 export type StudioDoc = {
   id: string;
@@ -242,6 +256,33 @@ export type StudioGithubLink = {
   releaseUrl: string | null;
 };
 
+// 5つのレビューAI(Reviewer/Security/Performance/Accessibility/Architect)の所見
+export type AiReview = {
+  reviewer: string; // 社員名
+  aspect: "コード品質" | "セキュリティ" | "パフォーマンス" | "アクセシビリティ" | "アーキテクチャ";
+  score: number; // 0-100
+  verdict: "approve" | "request_changes";
+  findings: string[]; // 指摘(対応済み前提)
+};
+
+// 開発中にAI社員が自発的に出す改善提案
+export type ImprovementProposal = {
+  id: string;
+  category: "UX" | "パフォーマンス" | "コード品質" | "技術負債" | "SEO" | "アクセシビリティ" | "CI";
+  title: string;
+  detail: string;
+  proposedBy: string;
+};
+
+export type DeployTarget =
+  | "Vercel"
+  | "Cloudflare Pages"
+  | "Netlify"
+  | "Firebase Hosting"
+  | "GitHub Pages"
+  | "Render"
+  | "Railway";
+
 export type StudioProject = {
   id: string;
   proposal: AppProposal;
@@ -257,6 +298,11 @@ export type StudioProject = {
   commitMessage: string;
   prDraft: PrDraft;
   github: StudioGithubLink | null; // 実GitHub接続時のみ埋まる
+  reviews: AiReview[]; // Review工程で5つのレビューAIが記入
+  qualityScore: number | null; // レビュー平均(0-100)
+  coverage: number | null; // Testing工程で確定
+  improvements: ImprovementProposal[];
+  deployTarget: DeployTarget;
 };
 
 export type StudioLog = {
@@ -282,7 +328,15 @@ export type StudioState = {
   proposals: AppProposal[]; // 企画会議で出た承認待ちの企画案
   project: StudioProject | null;
   archive: StudioArchive | null;
-  completedProjects: { appName: string; repoName: string; deployedDay: number }[];
+  completedProjects: {
+    appName: string;
+    repoName: string;
+    deployedDay: number;
+    version: string;
+    deployTarget: string;
+    htmlUrl: string | null; // 実GitHub URL(接続時のみ)
+    changeLog: string[];
+  }[];
   approvals: ApprovalRequest[];
   meetings: StudioMeeting[];
   logs: StudioLog[];

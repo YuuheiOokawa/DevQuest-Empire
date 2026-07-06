@@ -43,20 +43,30 @@ jobs:
 }
 
 /** Deploy用ワークフロー(workflow_dispatch起動、Human Approval後のみdispatchされる)。 */
-export function buildDeployWorkflowYaml(appName: string): string {
+export function buildDeployWorkflowYaml(appName: string, target = "Vercel"): string {
+  const commands: Record<string, string> = {
+    Vercel: "npx vercel deploy --prod --token $VERCEL_TOKEN",
+    "Cloudflare Pages": "npx wrangler pages deploy dist --project-name " + appName,
+    Netlify: "npx netlify deploy --prod --auth $NETLIFY_AUTH_TOKEN",
+    "Firebase Hosting": "npx firebase-tools deploy --only hosting --token $FIREBASE_TOKEN",
+    "GitHub Pages": "actions/deploy-pages を使用(Pages設定を有効化)",
+    Render: "Render Deploy Hook URLへcurl POST",
+    Railway: "npx @railway/cli up --service " + appName,
+  };
   return `name: Deploy
 on:
   workflow_dispatch:
 
+# デプロイ先: ${target}(Human Approval後のみdispatchされる)
 jobs:
   deploy:
-    name: Deploy ${appName}
+    name: Deploy ${appName} to ${target}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Deploy
         run: |
-          echo "Vercel/Cloudflareへのデプロイはトークン設定後に有効化してください"
-          echo "例: npx vercel deploy --prod --token \\$VERCEL_TOKEN"
+          echo "${target}へのデプロイはトークンをSecretsへ設定後に有効化してください"
+          echo "実行コマンド例: ${commands[target] ?? commands.Vercel}"
 `;
 }

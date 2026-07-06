@@ -5,8 +5,9 @@ import {
   CLAUDE_PROMPTS,
   FEATURE_POOL,
   FILE_PLANS,
-  MARKET_FINDINGS,
-  MEETING_AGENDAS,
+  IMPROVEMENT_POOL,
+  REVIEW_PANEL,
+  TEST_MATRIX,
   PROPOSAL_CATEGORIES,
   QUALITY_TARGETS,
   REPO_NAME_POOL,
@@ -31,7 +32,7 @@ import type {
 // 将来の接続ポイント: executePlannedOperationsをGitHub API/CLI呼び出しに差し替える。
 
 const STORAGE_KEY = "devquest-ai-studio-v1";
-const STATE_VERSION = 2; // v2: 承認8種(Branch/Commit/PR/Release追加)+実GitHub実行結果
+const STATE_VERSION = 3; // v3: 実開発モード一本化(市場分析/5AIレビュー/QualityScore/デプロイ先選択)
 const MAX_LOGS = 150;
 
 // 承認タイプごとのリスクレベル。書き込み範囲が広い操作ほど高リスク。
@@ -144,6 +145,14 @@ export function generateProposal(usedRepos: string[]): AppProposal {
     projectSize: difficulty <= 2 ? "S" : difficulty === 3 ? "M" : "L",
     mvpScope: features.slice(0, 2),
     futureScope: features.slice(2),
+    // 市場分析(公開情報ベースのルール生成。将来外部API/実データへ差し替え)
+    market: {
+      marketScale: cat.marketScale,
+      competitors: cat.competitors.map((c) => ({ ...c })),
+      differentiation: [...cat.differentiation],
+      mvpValue: `${pick(cat.targets)}が「${pick(cat.problems)}」を今日から解決できる状態をMVPで提供する`,
+      monetization: [...cat.monetization],
+    },
   };
 }
 
@@ -155,7 +164,35 @@ export function holdPlanningMeeting(state: StudioState): StudioState {
   ];
   next.proposals = [generateProposal(used), generateProposal(used), generateProposal(used)];
   const pm = employeeByRole(next, "Product Manager");
-  pushLog(next, "meeting", `${pm?.name ?? "PM"}が企画会議を開催し、3つのアプリ案を提出しました(CEOの承認待ち)`);
+  const analyst = employeeByRole(next, "Data Analyst");
+  const hikari = employeeByRole(next, "Marketing");
+
+  // 企画会議の議事録(市場分析・競合分析の要約)を残す
+  next.meetings = [
+    {
+      id: `smtg-${Date.now()}`,
+      day: next.day,
+      agenda: "新規プロダクト企画会議(市場・競合分析)",
+      utterances: next.proposals.map((p, i) => ({
+        name: [analyst?.name ?? "ミオ", hikari?.name ?? "ヒカリ", pm?.name ?? "ミライ"][i % 3],
+        role: (["Data Analyst", "Marketing", "Product Manager"] as const)[i % 3],
+        line: `${p.appName}: ${p.market.marketScale}。競合は${p.market.competitors.map((c) => c.name).join("・")}、差別化は${p.market.differentiation[0]}`,
+      })),
+      decision: "3案をCEOへ提出。市場分析・競合分析付きで承認判断を仰ぐ",
+    },
+    ...next.meetings,
+  ].slice(0, 20);
+  pushLog(next, "meeting", `${pm?.name ?? "PM"}が企画会議を開催し、市場・競合分析付きの3案を提出しました(CEOの承認待ち)`);
+  saveStudioState(next);
+  return next;
+}
+
+/** デプロイ先の変更(Deploy承認前ならいつでも変更可)。 */
+export function setDeployTarget(state: StudioState, target: StudioProject["deployTarget"]): StudioState {
+  if (!state.project) return state;
+  const next: StudioState = structuredClone(state);
+  next.project!.deployTarget = target;
+  pushLog(next, "info", `デプロイ先を${target}に設定しました`);
   saveStudioState(next);
   return next;
 }
@@ -211,6 +248,11 @@ export function startStudioProject(state: StudioState, proposalId: string): Stud
       ],
     },
     github: null,
+    reviews: [],
+    qualityScore: null,
+    coverage: null,
+    improvements: [],
+    deployTarget: "Vercel",
   };
   pushLog(next, "success", `CEOが企画「${chosen.appName}」を承認。プロジェクトを開始します(repo: ${chosen.repoName})`);
   saveStudioState(next);
@@ -261,7 +303,7 @@ function plannedOperationsFor(type: ApprovalType, project: StudioProject): strin
     case "deploy":
       return [
         `POST /repos/${owner}/${repo}/actions/workflows/deploy.yml/dispatches  ref=main`,
-        `相当CLI: gh workflow run deploy.yml --ref main(Vercel/Cloudflareへの接続はトークン設定後)`,
+        `相当CLI: gh workflow run deploy.yml --ref main(デプロイ先: ${project.deployTarget}、トークン設定後に実デプロイ)`,
       ];
   }
 }
@@ -329,8 +371,10 @@ function approvalDetailsFor(type: ApprovalType, project: StudioProject): { title
         summary: `PR「${project.prDraft.title}」をmainへマージします(squash)。`,
         details: [
           `PR: #${prNo} ${project.workBranch} → main`,
-          "Review: Reviewer承認済み(指摘は対応済み)",
-          "Test Result: Unit 42 passed / E2E 12 passed / Coverage 84%",
+          `Review: 5観点(品質/セキュリティ/性能/a11y/アーキテクチャ)全員approve`,
+          `Quality Score: ${project.qualityScore ?? "-"}/100`,
+          `Coverage: ${project.coverage ?? "-"}%(目標80%)`,
+          `Changed Files: ${project.filePlan.length}件+docs`,
         ],
       };
     case "release":
@@ -345,12 +389,13 @@ function approvalDetailsFor(type: ApprovalType, project: StudioProject): { title
       };
     case "deploy":
       return {
-        title: `Deployの承認: ${p.appName} v1.0.0`,
-        summary: "deploy.ymlワークフローを起動し、本番環境へデプロイします。",
+        title: `Deployの承認: ${p.appName} v1.0.0 → ${project.deployTarget}`,
+        summary: `deploy.ymlワークフローを起動し、${project.deployTarget}へデプロイします。`,
         details: [
           "GitHub Actions: 全ステップ成功(Lint/Type Check/Build/Test/Coverage/Security)",
+          `Quality Score: ${project.qualityScore ?? "-"}/100 / Coverage: ${project.coverage ?? "-"}%`,
           "Artifact: build-v1.0.0.zip",
-          "デプロイ先: Vercel / Cloudflare(トークン設定後に有効化)",
+          `デプロイ先: ${project.deployTarget}(トークン設定後に実デプロイ有効化)`,
         ],
       };
   }
@@ -442,6 +487,15 @@ export function markApprovalExecuted(
 
 const DOC_BUILDERS: Partial<Record<StudioPhaseId, { type: StudioDocType; title: string; lines: (p: AppProposal) => string[] }[]>> = {
   idea: [
+    { type: "projectCharter", title: "Project Charter", lines: (p) => [
+      `## 目的: ${p.problem}を解決し、${p.targetUser}に価値を届ける`,
+      `## 市場: ${p.market.marketScale}`,
+      `## 競合: ${p.market.competitors.map((c) => `${c.name}(弱点: ${c.weakness})`).join(" / ")}`,
+      `## 差別化: ${p.market.differentiation.join(" / ")}`,
+      `## MVPの価値: ${p.market.mvpValue}`,
+      `## 収益化案: ${p.market.monetization.join(" / ")}`,
+      `## 成功指標: ${p.qualityTarget}`,
+    ] },
     { type: "sprintPlan", title: "Sprint Plan", lines: (p) => [
       "Sprint 1(Week1): 基盤+認証+主要画面",
       `Sprint 2(Week2): ${p.mvpScope.join(" / ")}`,
@@ -453,7 +507,8 @@ const DOC_BUILDERS: Partial<Record<StudioPhaseId, { type: StudioDocType; title: 
       `課題: ${p.problem}`,
       `ターゲット: ${p.targetUser}`,
       ...p.features.map((f, i) => `FR-${i + 1}: ${f}`),
-      `品質目標: ${p.qualityTarget}`,
+      `NFR-1: ${p.qualityTarget}`,
+      "NFR-2: WCAG 2.1 AA準拠 / NFR-3: 初回表示1秒以内",
     ] },
   ],
   architecture: [
@@ -494,12 +549,26 @@ const DOC_BUILDERS: Partial<Record<StudioPhaseId, { type: StudioDocType; title: 
       "総評: マージ可能な品質",
     ] },
   ],
+  uiDesign: [
+    { type: "screenDesign", title: "Screen Design", lines: (p) => [
+      "画面一覧: ホーム / メイン機能 / 設定 / オンボーディング",
+      `メイン機能画面: ${p.mvpScope.join("と")}を1画面で完結`,
+      "遷移: ホーム ↔ メイン(タブ)、設定はモーダル",
+      "状態: 各画面にローディング/エラー/空状態を定義",
+    ] },
+  ],
   documentation: [
     { type: "readme", title: "README", lines: (p) => [
       `# ${p.appName}`,
       p.problem + "を解決するアプリ",
       `## 機能: ${p.features.join(" / ")}`,
       `## スタック: ${p.techStack.join(" / ")}`,
+      "## セットアップ: pnpm install && pnpm dev(詳細はdocs参照)",
+    ] },
+    { type: "roadmap", title: "Roadmap", lines: (p) => [
+      `M1(今月): v1.0.0 MVP(${p.mvpScope.join(" / ")})`,
+      `M2: ${p.futureScope[0] ?? "機能拡張"}`,
+      `M3: ${p.futureScope[1] ?? "モバイル対応"}・収益化(${p.market.monetization[0] ?? "課金"})`,
     ] },
     { type: "changeLog", title: "Change Log", lines: () => ["v1.0.0 初回リリース(全機能実装・テスト完了)"] },
     { type: "releaseNote", title: "Release Note", lines: (p) => [
@@ -507,40 +576,20 @@ const DOC_BUILDERS: Partial<Record<StudioPhaseId, { type: StudioDocType; title: 
       `主な機能: ${p.mvpScope.join(" / ")}`,
       "既知の問題: なし",
     ] },
+    { type: "wiki", title: "Wiki(運用手順)", lines: (p) => [
+      "## デプロイ手順: mainマージ後、Deploy承認→workflow_dispatch",
+      "## 障害対応: Actionsのログ確認→ロールバックはRevert PR",
+      `## FAQ: ${p.targetUser}向けのよくある質問を随時追記`,
+    ] },
   ],
 };
 
-// --- 1日進める ---
+// --- 工程の実行(実開発モード: 1回の実行=1工程) ---
 
 export function advanceStudioDay(state: StudioState): StudioState {
   const next: StudioState = structuredClone(state);
-  next.day += 1;
+  next.day += 1; // dayは「実行ステップ数」として使う(時間シミュレーションではない)
 
-  // 市場調査(毎日1件)
-  const finding = pick(MARKET_FINDINGS);
-  next.insights = [
-    { id: `mi-${next.day}-${Math.floor(Math.random() * 1000)}`, day: next.day, ...finding },
-    ...next.insights,
-  ].slice(0, 30);
-  const analyst = employeeByRole(next, "Data Analyst");
-  pushLog(next, "market", `${analyst?.name ?? "アナリスト"}が${finding.source}を分析: ${finding.opportunity}`);
-
-  // AI会議(毎日)
-  const agenda = pick(MEETING_AGENDAS);
-  const participants = pickMany(next.employees, 3);
-  next.meetings = [
-    {
-      id: `smtg-${next.day}`,
-      day: next.day,
-      agenda: agenda.agenda,
-      utterances: participants.map((p, i) => ({ name: p.name, role: p.role, line: agenda.lines[i % agenda.lines.length] })),
-      decision: agenda.decision,
-    },
-    ...next.meetings,
-  ].slice(0, 20);
-  pushLog(next, "meeting", `【会議】${agenda.agenda} → ${agenda.decision}`);
-
-  // プロジェクト進行(1日1工程)
   const project = next.project;
   if (project) {
     const phase = project.phases[project.phaseIndex];
@@ -569,7 +618,9 @@ export function advanceStudioDay(state: StudioState): StudioState {
               riskLevel: APPROVAL_RISK[template.approval],
               requestedBy: requester ? `${requester.name}(${requester.role})` : "AI社員",
               filesChanged: project.filePlan.length,
-              testsSummary: "Unit 42 / E2E 12 passed / Coverage 84%",
+              testsSummary: project.coverage
+                ? `全${TEST_MATRIX.reduce((s, t) => s + t.count, 0)}ケース passed / Coverage ${project.coverage}%`
+                : "テスト工程で確定",
               ceoComment: null,
               executionResult: null,
               executedDay: null,
@@ -617,6 +668,48 @@ export function advanceStudioDay(state: StudioState): StudioState {
             day: next.day,
           });
         }
+        // Testing工程: テストマトリクスからカバレッジ確定
+        if (template.id === "testing") {
+          project.coverage = 82 + Math.floor(Math.random() * 10);
+          pushLog(next, "success", `テストスイート完成: ${TEST_MATRIX.reduce((s, t) => s + t.count, 0)}ケース / Coverage ${project.coverage}%`);
+        }
+
+        // Review工程: 5つのレビューAI(品質/セキュリティ/性能/a11y/アーキテクチャ)が採点
+        if (template.id === "review") {
+          project.reviews = REVIEW_PANEL.map((r) => {
+            const reviewer = employeeByRole(next, r.role);
+            return {
+              reviewer: reviewer?.name ?? r.role,
+              aspect: r.aspect,
+              score: 85 + Math.floor(Math.random() * 13),
+              verdict: "approve" as const,
+              findings: [...r.findings],
+            };
+          });
+          project.qualityScore = Math.round(
+            project.reviews.reduce((s, r) => s + r.score, 0) / project.reviews.length
+          );
+          pushLog(next, "success", `5観点レビュー完了: Quality Score ${project.qualityScore}/100(全員approve)`);
+        }
+
+        // 開発中の自発的な改善提案(UX/性能/品質/負債/SEO/a11y/CI)
+        if (["uiDesign", "frontend", "backend", "testing"].includes(template.id)) {
+          const used = new Set(project.improvements.map((i) => i.title));
+          const candidates = IMPROVEMENT_POOL.filter((i) => !used.has(i.title));
+          if (candidates.length > 0) {
+            const imp = pick(candidates);
+            const proposer = employeeByRole(next, imp.role);
+            project.improvements.push({
+              id: `imp-${next.day}-${Math.floor(Math.random() * 1000)}`,
+              category: imp.category,
+              title: imp.title,
+              detail: imp.detail,
+              proposedBy: proposer ? `${proposer.name}(${proposer.role})` : imp.role,
+            });
+            pushLog(next, "info", `【改善提案】${imp.category}: ${imp.title}(${proposer?.name ?? imp.role})`);
+          }
+        }
+
         // GitHub Actions実行フェーズ
         if (template.id === "actionsRun") {
           project.actionsSteps = project.actionsSteps.map((s) => ({ ...s, status: "success" as const }));
@@ -632,7 +725,15 @@ export function advanceStudioDay(state: StudioState): StudioState {
         // Deploy完了 → プロジェクト完了
         if (template.id === "deploy") {
           next.completedProjects = [
-            { appName: project.proposal.appName, repoName: project.proposal.repoName, deployedDay: next.day },
+            {
+              appName: project.proposal.appName,
+              repoName: project.proposal.repoName,
+              deployedDay: next.day,
+              version: "v1.0.0",
+              deployTarget: project.deployTarget,
+              htmlUrl: project.github?.htmlUrl ?? null,
+              changeLog: [`v1.0.0 初回リリース(${project.proposal.mvpScope.join(" / ")})`],
+            },
             ...next.completedProjects,
           ];
           pushLog(next, "success", `🎉「${project.proposal.appName}」がデプロイされました!プロジェクト完了です`);

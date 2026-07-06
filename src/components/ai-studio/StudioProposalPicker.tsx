@@ -60,6 +60,17 @@ export function StudioProposalPicker({
 
               {open && (
                 <div className="flex flex-col gap-2 text-xs">
+                  <div className="rounded-lg bg-sky-500/10 p-2.5">
+                    <p className="mb-1 text-[10px] font-semibold text-sky-600">市場・競合分析(AI社員による)</p>
+                    <DetailRow label="市場規模" value={p.market.marketScale} />
+                    <DetailRow
+                      label="競合と弱点"
+                      value={p.market.competitors.map((c) => `${c.name}(${c.weakness})`).join(" / ")}
+                    />
+                    <DetailRow label="差別化ポイント" value={p.market.differentiation.join(" / ")} />
+                    <DetailRow label="MVPで実現する価値" value={p.market.mvpValue} />
+                    <DetailRow label="収益化案" value={p.market.monetization.join(" / ")} />
+                  </div>
                   <DetailRow label="Target User" value={p.targetUser} />
                   <DetailRow label="Features" value={p.features.join(" / ")} />
                   <DetailRow label="Tech Stack" value={p.techStack.join(" / ")} />

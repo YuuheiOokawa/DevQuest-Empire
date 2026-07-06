@@ -284,9 +284,10 @@ export function buildScaffoldFiles(project: StudioProject): { path: string; cont
   const files: { path: string; content: string }[] = [];
   const p = project.proposal;
 
-  // ドキュメント(README + docs/)
+  // ドキュメント(README + CHANGELOG + docs/)
   for (const doc of project.docs) {
-    const path = doc.type === "readme" ? "README.md" : `docs/${doc.type}.md`;
+    const path =
+      doc.type === "readme" ? "README.md" : doc.type === "changeLog" ? "CHANGELOG.md" : `docs/${doc.type}.md`;
     if (files.some((f) => f.path === path)) continue;
     files.push({
       path,
@@ -308,9 +309,9 @@ export function buildScaffoldFiles(project: StudioProject): { path: string; cont
     files.push({ path: f.path, content: header });
   }
 
-  // CI / Deploy ワークフロー(実際に動く)
+  // CI / Deploy ワークフロー(実際に動く。DeployはHuman Approval後のdispatchのみ)
   files.push({ path: ".github/workflows/ci.yml", content: buildCiWorkflowYaml(p.appName) });
-  files.push({ path: ".github/workflows/deploy.yml", content: buildDeployWorkflowYaml(p.appName) });
+  files.push({ path: ".github/workflows/deploy.yml", content: buildDeployWorkflowYaml(p.appName, project.deployTarget) });
 
   return files;
 }
