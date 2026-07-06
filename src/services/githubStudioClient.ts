@@ -1,7 +1,8 @@
 "use client";
 
-import { buildCiWorkflowYaml, buildDeployWorkflowYaml } from "@/services/github/workflowTemplates";
+import { buildDeployWorkflowYaml } from "@/services/github/workflowTemplates";
 import { buildImplementationPack } from "@/services/aiStudioService";
+import { buildRealCiYaml, buildRealScaffold } from "@/services/codeTemplates";
 import type { ApprovalRequest, StudioProject, StudioState } from "@/services/aiStudioTypes";
 
 // AI開発スタジオ ←→ GitHub APIルートの橋渡し(クライアント側)。
@@ -370,25 +371,17 @@ export function buildScaffoldFiles(project: StudioProject): { path: string; cont
     });
   }
 
-  // AI社員の変更予定ファイル → 実装指示コメント入りスキャフォールド
-  for (const f of project.filePlan) {
-    if (f.path.startsWith(".github/")) continue; // ワークフローは下で実体を入れる
-    if (files.some((x) => x.path === f.path)) continue;
-    const prompt = project.prompts.find((pr) => pr.title && f.summary.includes(pr.title)) ?? null;
-    const header =
-      f.path.endsWith(".sql")
-        ? `-- ${f.summary}\n-- TODO: Claude Codeで実装してください\n`
-        : f.path.endsWith(".md")
-          ? `# ${f.summary}\n\nTODO: Claude Codeで実装してください\n`
-          : `// ${f.summary}(担当: ${f.owner})\n// TODO: Claude Codeで実装してください${prompt ? `\n// プロンプト: ${prompt.prompt.slice(0, 120)}...` : ""}\nexport {};\n`;
-    files.push({ path: f.path, content: header });
+  // 実装コード一式(テンプレートベースの完全実装。clone→npm install→devで動く)
+  for (const f of buildRealScaffold(project)) {
+    if (!files.some((x) => x.path === f.path)) files.push(f);
   }
 
-  // 一括実装パック(claude -p へそのまま渡せる実装指示書)
+  // 一括実装パック(機能拡張時に claude -p へそのまま渡せる実装指示書)
   files.push({ path: "docs/implementation-pack.md", content: buildImplementationPack(project) });
 
-  // CI / Deploy ワークフロー(実際に動く。DeployはHuman Approval後のdispatchのみ)
-  files.push({ path: ".github/workflows/ci.yml", content: buildCiWorkflowYaml(p.appName) });
+  // CI: 実際にnpm install→typecheck→test→buildを実行するワークフロー。
+  // DeployはHuman Approval後のdispatchのみ。
+  files.push({ path: ".github/workflows/ci.yml", content: buildRealCiYaml(p.appName) });
   files.push({ path: ".github/workflows/deploy.yml", content: buildDeployWorkflowYaml(p.appName, project.deployTarget) });
 
   return files;
