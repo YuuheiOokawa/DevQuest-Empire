@@ -25,8 +25,16 @@ export function SyncButton() {
         setMessage(result.message ?? "同期に失敗しました。");
         return;
       }
+      if (result.syncedRepositories === 0) {
+        // 同期対象が1つもない=リポジトリごとの同期設定が未完了。原因を明示して誘導する
+        setIsError(true);
+        setMessage("同期対象のリポジトリがありません。「設定 > GitHub連携」で同期したいリポジトリをONにしてください。");
+        return;
+      }
       setMessage(
-        `Commit+${result.newCommits} Issue+${result.newIssues} PR+${result.newPullRequests}`
+        result.newCommits + result.newIssues + result.newPullRequests === 0
+          ? `新しい活動はありませんでした(対象${result.syncedRepositories}リポジトリ・同期済み)`
+          : `Commit+${result.newCommits} Issue+${result.newIssues} PR+${result.newPullRequests}(対象${result.syncedRepositories}リポジトリ)`
       );
       reportGrowthResult(result);
       router.refresh();

@@ -12,6 +12,7 @@ import { updateStreak } from "@/lib/game/achievements";
 import { unlockProgressionRewards } from "@/lib/game/progression";
 
 export type SyncResult = {
+  syncedRepositories: number; // 同期対象(syncEnabled)のリポジトリ数。0なら設定未完了
   newCommits: number;
   newIssues: number;
   newPullRequests: number;
@@ -246,6 +247,7 @@ export async function syncGithubForUser(userId: string): Promise<SyncResult> {
   );
 
   return {
+    syncedRepositories: repositories.length,
     newCommits,
     newIssues,
     newPullRequests,
