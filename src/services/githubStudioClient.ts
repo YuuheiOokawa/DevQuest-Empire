@@ -168,6 +168,40 @@ export async function requestAiReview(project: StudioProject): Promise<
   return { ok: false };
 }
 
+/**
+ * Push対象ファイル一式を組み立てる。ANTHROPIC_API_KEY設定時はClaude APIが
+ * 生成した実装コードでスキャフォールドを置き換え、未設定時は雛形のまま返す。
+ * (生成のみ。GitHubへの反映は従来どおりHuman Approval済みのexecute経由)
+ */
+export async function buildPushFilesWithAi(
+  project: StudioProject
+): Promise<{ files: { path: string; content: string }[]; aiGenerated: boolean }> {
+  const scaffold = buildScaffoldFiles(project);
+  try {
+    const res = await fetch("/api/ai-studio/generate-code", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        appName: project.proposal.appName,
+        techStack: project.proposal.techStack,
+        features: project.proposal.features,
+        mvpScope: project.proposal.mvpScope,
+        files: project.filePlan.map((f) => ({ path: f.path, summary: f.summary })),
+      }),
+    });
+    const json = (await res.json().catch(() => ({}))) as {
+      ok?: boolean;
+      files?: { path: string; content: string }[];
+    };
+    if (!res.ok || !json.ok || !json.files?.length) return { files: scaffold, aiGenerated: false };
+    const generated = new Map(json.files.map((f) => [f.path, f.content]));
+    const merged = scaffold.map((f) => (generated.has(f.path) ? { path: f.path, content: generated.get(f.path)! } : f));
+    return { files: merged, aiGenerated: true };
+  } catch {
+    return { files: scaffold, aiGenerated: false };
+  }
+}
+
 // --- Human Approval済み操作の実行 ---
 
 export type ExecutePayload = Record<string, unknown> & { action: string };
