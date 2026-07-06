@@ -26,6 +26,8 @@ import { SyncButton } from "@/components/github/SyncButton";
 import { LoginBonusCard } from "@/components/login-bonus/LoginBonusCard";
 import { RecommendedActionCard } from "@/components/home/RecommendedActionCard";
 import { RecentHighlightsCard } from "@/components/home/RecentHighlightsCard";
+import { WeeklyReviewCard } from "@/components/home/WeeklyReviewCard";
+import { getWeeklyReview } from "@/lib/game/weeklyReview";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 
@@ -50,6 +52,7 @@ export default async function HomePage() {
     qualifications,
     syncedRepositoryCount,
     recentHighlights,
+    weeklyReview,
   ] = await Promise.all([
     getActivitySummary(userId),
     getVillageBuildingsView(userId),
@@ -61,6 +64,7 @@ export default async function HomePage() {
     getQualificationsView(userId),
     prisma.githubRepository.count({ where: { userId, syncEnabled: true } }),
     getRecentHighlights(userId),
+    getWeeklyReview(userId),
   ]);
 
   const claimableMissionCount = missions?.filter((m) => m.claimable).length ?? 0;
@@ -116,6 +120,8 @@ export default async function HomePage() {
         <RecommendedActionCard action={recommendedAction} />
 
         <RecentHighlightsCard highlights={recentHighlights} />
+
+        <WeeklyReviewCard review={weeklyReview} />
 
         <LoginBonusCard
           claimedToday={loginBonus.claimedToday}
