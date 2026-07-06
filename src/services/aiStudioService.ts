@@ -483,6 +483,121 @@ export function markApprovalExecuted(
   return next;
 }
 
+// --- 自動化: 実データ取り込み ---
+
+/** 実CI結果(GitHub Actionsの最新Run)をactionsStepsへ反映する。 */
+export function applyRealCiResult(
+  state: StudioState,
+  run: { name: string; status: string; conclusion: string | null; htmlUrl: string },
+  steps: { name: string; status: string; conclusion: string | null }[]
+): StudioState {
+  if (!state.project) return state;
+  const next: StudioState = structuredClone(state);
+  const project = next.project!;
+  project.actionsSteps = project.actionsSteps.map((s) => {
+    const real = steps.find((r) => r.name.toLowerCase().includes(s.label.toLowerCase()));
+    if (!real) return s;
+    const status =
+      real.conclusion === "success"
+        ? ("success" as const)
+        : real.conclusion === "failure"
+          ? ("failure" as const)
+          : real.status === "in_progress" || real.status === "queued"
+            ? ("running" as const)
+            : s.status;
+    return { ...s, status, detail: `実CI: ${real.conclusion ?? real.status}` };
+  });
+  pushLog(
+    next,
+    run.conclusion === "success" ? "success" : "info",
+    `実CI結果を取り込みました: ${run.name} → ${run.conclusion ?? run.status}(${run.htmlUrl})`
+  );
+  saveStudioState(next);
+  return next;
+}
+
+/** GitHub Search APIの市場シグナルを企画へ添付する。 */
+export function attachMarketSignals(state: StudioState, proposalId: string, signals: string[]): StudioState {
+  const next: StudioState = structuredClone(state);
+  const proposal = next.proposals.find((p) => p.id === proposalId);
+  if (!proposal) return state;
+  proposal.market.liveSignals = signals;
+  pushLog(next, "market", `GitHub Search APIで「${proposal.category}」の実データを取得しました(${signals.length}件)`);
+  saveStudioState(next);
+  return next;
+}
+
+/** Claude APIによる実レビュー結果を反映する(フォールバック時は呼ばれない)。 */
+export function applyAiReviews(
+  state: StudioState,
+  reviews: { aspect: string; score: number; findings: string[] }[]
+): StudioState {
+  if (!state.project) return state;
+  const next: StudioState = structuredClone(state);
+  const project = next.project!;
+  project.reviews = reviews.map((r) => {
+    const panel = REVIEW_PANEL.find((p) => p.aspect === r.aspect);
+    const reviewer = panel ? employeeByRole(next, panel.role) : undefined;
+    return {
+      reviewer: reviewer ? `${reviewer.name}(Claude API)` : "Claude API",
+      aspect: (panel?.aspect ?? "コード品質") as (typeof REVIEW_PANEL)[number]["aspect"],
+      score: r.score,
+      verdict: r.score >= 70 ? ("approve" as const) : ("request_changes" as const),
+      findings: r.findings,
+    };
+  });
+  project.qualityScore = Math.round(project.reviews.reduce((s, r) => s + r.score, 0) / project.reviews.length);
+  pushLog(next, "success", `Claude APIによる実レビュー完了: Quality Score ${project.qualityScore}/100`);
+  saveStudioState(next);
+  return next;
+}
+
+/** 改善提案をGitHub Issueとして起票済みにする。 */
+export function markImprovementIssued(state: StudioState, improvementId: string, issueNumber: number): StudioState {
+  if (!state.project) return state;
+  const next: StudioState = structuredClone(state);
+  const imp = next.project!.improvements.find((i) => i.id === improvementId);
+  if (!imp) return state;
+  imp.issueNumber = issueNumber;
+  pushLog(next, "success", `改善提案「${imp.title}」をIssue #${issueNumber}として起票しました`);
+  saveStudioState(next);
+  return next;
+}
+
+/**
+ * 一括実装パック: 企画・要件・全プロンプト・変更計画・受け入れ基準を
+ * 1つのMarkdownへまとめる。`claude -p`へそのまま渡せば実装が始まる。
+ */
+export function buildImplementationPack(project: StudioProject): string {
+  const p = project.proposal;
+  return [
+    `# ${p.appName} 実装指示書(AI開発スタジオ生成)`,
+    "",
+    "あなたはこのリポジトリの実装を担当するシニアエンジニアチームです。以下の順で実装してください。",
+    "",
+    `## プロダクト概要`,
+    `- 課題: ${p.problem} / ターゲット: ${p.targetUser}`,
+    `- MVPスコープ: ${p.mvpScope.join(" / ")}`,
+    `- 技術スタック: ${p.techStack.join(" / ")}`,
+    `- 品質目標: ${p.qualityTarget}(TypeScript/Lintゼロエラー、Build成功、Coverage 80%+)`,
+    "",
+    `## 変更対象ファイル(${project.filePlan.length}件)`,
+    ...project.filePlan.map((f) => `- ${f.action === "add" ? "追加" : "変更"}: ${f.path} — ${f.summary}`),
+    "",
+    "## 工程別の実装指示",
+    ...project.prompts.flatMap((pr, i) => [`### ${i + 1}. ${pr.title}(${pr.role})`, "", pr.prompt, ""]),
+    "## 完了条件",
+    "- 全テスト(Unit/Integration/E2E/A11y/Performance/Regression)がCIで成功",
+    "- README通りに第三者が起動できる",
+    "- 重要: git push / PR作成 / merge は行わないこと(Human Approvalフローで人間が実行します)",
+    "",
+    "## Claude Code(headless)での実行例",
+    "```bash",
+    `claude -p "$(cat docs/implementation-pack.md)"`,
+    "```",
+  ].join("\n");
+}
+
 // --- ドキュメント生成 ---
 
 const DOC_BUILDERS: Partial<Record<StudioPhaseId, { type: StudioDocType; title: string; lines: (p: AppProposal) => string[] }[]>> = {

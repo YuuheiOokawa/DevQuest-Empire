@@ -6,18 +6,21 @@ import { Card, CardContent } from "@/components/ui/card";
 import type { ClaudePrompt } from "@/services/aiStudioTypes";
 
 // AI社員がClaude Codeへ送るためのプロンプト一覧。コピーして実際に使える。
-export function StudioPromptsCard({ prompts }: { prompts: ClaudePrompt[] }) {
+// packを渡すと全工程まとめた「一括実装パック」もコピーできる(claude -p 用)。
+export function StudioPromptsCard({ prompts, pack }: { prompts: ClaudePrompt[]; pack?: string }) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const handleCopy = async (p: ClaudePrompt) => {
+  const copyText = async (id: string, text: string) => {
     try {
-      await navigator.clipboard.writeText(p.prompt);
-      setCopiedId(p.id);
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
       setTimeout(() => setCopiedId(null), 1500);
     } catch {
       /* クリップボード非対応環境では何もしない */
     }
   };
+
+  const handleCopy = (p: ClaudePrompt) => copyText(p.id, p.prompt);
 
   return (
     <Card>
@@ -26,6 +29,16 @@ export function StudioPromptsCard({ prompts }: { prompts: ClaudePrompt[] }) {
           <Bot className="text-primary size-4" />
           Claude Codeプロンプト({prompts.length}件)
         </h3>
+        {pack && prompts.length > 0 && (
+          <button
+            type="button"
+            onClick={() => copyText("__pack__", pack)}
+            className="flex items-center gap-1.5 rounded-lg border border-indigo-500/40 px-2.5 py-2 text-xs font-semibold text-indigo-500 hover:bg-indigo-500/10"
+          >
+            {copiedId === "__pack__" ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+            一括実装パックをコピー(全工程まとめて claude -p へ)
+          </button>
+        )}
         {prompts.length === 0 ? (
           <p className="text-muted-foreground text-xs">
             開発工程が進むと、AI社員がClaude Codeへ送る実装指示プロンプトがここに溜まります。

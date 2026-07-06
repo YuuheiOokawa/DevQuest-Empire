@@ -65,6 +65,7 @@ export type MarketAnalysis = {
   differentiation: string[]; // 差別化ポイント
   mvpValue: string; // MVPで実現する価値
   monetization: string[]; // 将来の収益化案
+  liveSignals?: string[]; // GitHub Search API等の実データシグナル(取得時のみ)
 };
 
 export type AppProposal = {
@@ -215,7 +216,7 @@ export type ActionsStepId =
 export type ActionsStep = {
   id: ActionsStepId;
   label: string;
-  status: "pending" | "success";
+  status: "pending" | "running" | "success" | "failure";
   detail: string;
 };
 
@@ -272,6 +273,7 @@ export type ImprovementProposal = {
   title: string;
   detail: string;
   proposedBy: string;
+  issueNumber?: number | null; // Issue化済みならそのIssue番号
 };
 
 export type DeployTarget =

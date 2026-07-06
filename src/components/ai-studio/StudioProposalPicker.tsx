@@ -16,11 +16,24 @@ const PRIORITY_STYLE: Record<AppProposal["priority"], string> = {
 export function StudioProposalPicker({
   proposals,
   onSelect,
+  onFetchSignals,
 }: {
   proposals: AppProposal[];
   onSelect: (id: string) => void;
+  onFetchSignals?: (proposal: AppProposal) => Promise<void>;
 }) {
   const [openId, setOpenId] = useState<string | null>(proposals[0]?.id ?? null);
+  const [fetchingId, setFetchingId] = useState<string | null>(null);
+
+  const handleSignals = async (p: AppProposal) => {
+    if (!onFetchSignals) return;
+    setFetchingId(p.id);
+    try {
+      await onFetchSignals(p);
+    } finally {
+      setFetchingId(null);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-3">
@@ -70,6 +83,29 @@ export function StudioProposalPicker({
                     <DetailRow label="差別化ポイント" value={p.market.differentiation.join(" / ")} />
                     <DetailRow label="MVPで実現する価値" value={p.market.mvpValue} />
                     <DetailRow label="収益化案" value={p.market.monetization.join(" / ")} />
+                    {p.market.liveSignals && p.market.liveSignals.length > 0 && (
+                      <div className="mt-1">
+                        <span className="text-[10px] font-semibold text-sky-600">
+                          実データ(GitHub Search API・人気リポジトリ)
+                        </span>
+                        {p.market.liveSignals.map((s, i) => (
+                          <p key={i} className="font-mono text-[10px]">
+                            ・{s}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                    {onFetchSignals && !p.market.liveSignals && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={fetchingId === p.id}
+                        onClick={() => handleSignals(p)}
+                        className="mt-1 h-6 px-2 text-[10px]"
+                      >
+                        {fetchingId === p.id ? "取得中..." : "実データで補強(GitHub Search)"}
+                      </Button>
+                    )}
                   </div>
                   <DetailRow label="Target User" value={p.targetUser} />
                   <DetailRow label="Features" value={p.features.join(" / ")} />

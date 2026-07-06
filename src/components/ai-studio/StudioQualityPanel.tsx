@@ -1,13 +1,35 @@
 "use client";
 
-import { Gauge, Lightbulb, Rocket, ShieldCheck } from "lucide-react";
+import { useState } from "react";
+import { Bot, CircleDot, Gauge, Lightbulb, Loader2, Rocket, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DEPLOY_TARGETS } from "@/data/studioTemplates";
-import type { DeployTarget, StudioProject } from "@/services/aiStudioTypes";
+import type { DeployTarget, ImprovementProposal, StudioProject } from "@/services/aiStudioTypes";
 
 // レビューAIパネル(5観点)の結果とQuality Score。
-export function StudioReviewsCard({ project }: { project: StudioProject }) {
+// onAiReviewを渡すとClaude APIによる実レビューへ差し替えできる(キー未設定時はフォールバック)。
+export function StudioReviewsCard({
+  project,
+  onAiReview,
+}: {
+  project: StudioProject;
+  onAiReview?: () => Promise<string | null>;
+}) {
+  const [running, setRunning] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
   if (project.reviews.length === 0) return null;
+
+  const handleAiReview = async () => {
+    if (!onAiReview) return;
+    setRunning(true);
+    try {
+      setMessage(await onAiReview());
+    } finally {
+      setRunning(false);
+    }
+  };
+
   return (
     <Card>
       <CardContent className="flex flex-col gap-2 py-4">
@@ -23,6 +45,13 @@ export function StudioReviewsCard({ project }: { project: StudioProject }) {
             </span>
           )}
         </div>
+        {onAiReview && (
+          <Button size="sm" variant="outline" onClick={handleAiReview} disabled={running} className="gap-1 text-xs">
+            {running ? <Loader2 className="size-3 animate-spin" /> : <Bot className="size-3" />}
+            実AIレビューを実行(Claude API)
+          </Button>
+        )}
+        {message && <p className="text-muted-foreground text-[10px]">{message}</p>}
         <div className="flex flex-col gap-1.5">
           {project.reviews.map((r) => (
             <div key={r.aspect} className="rounded-lg border p-2.5 text-xs">
@@ -49,8 +78,27 @@ export function StudioReviewsCard({ project }: { project: StudioProject }) {
 }
 
 // AI社員の自発的な改善提案(UX/性能/品質/負債/SEO/a11y/CI)。
-export function StudioImprovementsCard({ project }: { project: StudioProject }) {
+// onCreateIssueを渡すと、実リポジトリへGitHub Issueとして自動起票できる。
+export function StudioImprovementsCard({
+  project,
+  onCreateIssue,
+}: {
+  project: StudioProject;
+  onCreateIssue?: (imp: ImprovementProposal) => Promise<void>;
+}) {
+  const [issuingId, setIssuingId] = useState<string | null>(null);
   if (project.improvements.length === 0) return null;
+
+  const handleIssue = async (imp: ImprovementProposal) => {
+    if (!onCreateIssue) return;
+    setIssuingId(imp.id);
+    try {
+      await onCreateIssue(imp);
+    } finally {
+      setIssuingId(null);
+    }
+  };
+
   return (
     <Card>
       <CardContent className="flex flex-col gap-2 py-4">
@@ -61,12 +109,34 @@ export function StudioImprovementsCard({ project }: { project: StudioProject }) 
         <div className="flex flex-col gap-1.5">
           {project.improvements.map((imp) => (
             <div key={imp.id} className="rounded-lg border p-2.5 text-xs">
-              <p className="font-semibold">
-                <span className="mr-1.5 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-600">
-                  {imp.category}
-                </span>
-                {imp.title}
-              </p>
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-semibold">
+                  <span className="mr-1.5 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-600">
+                    {imp.category}
+                  </span>
+                  {imp.title}
+                </p>
+                {imp.issueNumber ? (
+                  <span className="flex shrink-0 items-center gap-1 text-[10px] text-emerald-600">
+                    <CircleDot className="size-3" />
+                    Issue #{imp.issueNumber}
+                  </span>
+                ) : (
+                  onCreateIssue &&
+                  project.github && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={issuingId === imp.id}
+                      onClick={() => handleIssue(imp)}
+                      className="h-6 shrink-0 gap-1 px-2 text-[10px]"
+                    >
+                      {issuingId === imp.id ? <Loader2 className="size-3 animate-spin" /> : <CircleDot className="size-3" />}
+                      Issue化
+                    </Button>
+                  )
+                )}
+              </div>
               <p className="text-muted-foreground text-[11px]">{imp.detail}</p>
               <p className="text-muted-foreground text-[10px]">提案: {imp.proposedBy}</p>
             </div>

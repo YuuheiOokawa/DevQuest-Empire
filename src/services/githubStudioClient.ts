@@ -1,6 +1,7 @@
 "use client";
 
 import { buildCiWorkflowYaml, buildDeployWorkflowYaml } from "@/services/github/workflowTemplates";
+import { buildImplementationPack } from "@/services/aiStudioService";
 import type { ApprovalRequest, StudioProject, StudioState } from "@/services/aiStudioTypes";
 
 // AI開発スタジオ ←→ GitHub APIルートの橋渡し(クライアント側)。
@@ -125,6 +126,46 @@ export async function fetchRepoDetail(owner: string, repo: string, force = false
 
 export function getCachedOverview(): GithubOverview | null {
   return loadCache().overview;
+}
+
+// --- 自動化: 実データ取得 ---
+
+/** 実CI結果(最新Run+ステップ)を取得する。 */
+export async function fetchCiResult(owner: string, repo: string) {
+  return getJson<{
+    result: {
+      run: { id: number; name: string; status: string; conclusion: string | null; htmlUrl: string };
+      steps: { name: string; status: string; conclusion: string | null }[];
+    } | null;
+  }>(`/api/ai-studio/github/ci?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`);
+}
+
+/** GitHub Search APIで市場シグナルを取得する。 */
+export async function fetchMarketSignals(q: string) {
+  return getJson<{ totalCount: number; signals: string[] }>(
+    `/api/ai-studio/github/market?q=${encodeURIComponent(q)}`
+  );
+}
+
+/** Claude APIによる実レビューを依頼する(キー未設定時はfallback:true)。 */
+export async function requestAiReview(project: StudioProject): Promise<
+  { ok: true; reviews: { aspect: string; score: number; findings: string[] }[] } | { ok: false }
+> {
+  const res = await fetch("/api/ai-studio/ai-review", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      appName: project.proposal.appName,
+      techStack: project.proposal.techStack,
+      files: project.filePlan.map((f) => ({ path: f.path, summary: f.summary })),
+    }),
+  });
+  const json = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    reviews?: { aspect: string; score: number; findings: string[] }[];
+  };
+  if (res.ok && json.ok && json.reviews) return { ok: true, reviews: json.reviews };
+  return { ok: false };
 }
 
 // --- Human Approval済み操作の実行 ---
@@ -308,6 +349,9 @@ export function buildScaffoldFiles(project: StudioProject): { path: string; cont
           : `// ${f.summary}(担当: ${f.owner})\n// TODO: Claude Codeで実装してください${prompt ? `\n// プロンプト: ${prompt.prompt.slice(0, 120)}...` : ""}\nexport {};\n`;
     files.push({ path: f.path, content: header });
   }
+
+  // 一括実装パック(claude -p へそのまま渡せる実装指示書)
+  files.push({ path: "docs/implementation-pack.md", content: buildImplementationPack(project) });
 
   // CI / Deploy ワークフロー(実際に動く。DeployはHuman Approval後のdispatchのみ)
   files.push({ path: ".github/workflows/ci.yml", content: buildCiWorkflowYaml(p.appName) });

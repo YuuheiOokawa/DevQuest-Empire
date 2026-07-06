@@ -31,6 +31,24 @@ export async function listWorkflowRuns(
   }));
 }
 
+export type RealCiStep = { name: string; status: string; conclusion: string | null };
+
+/** 最新のワークフローRunとそのジョブステップ(実CI結果の自動取り込み用)。 */
+export async function getLatestRunSteps(
+  adapter: GithubApiAdapter,
+  owner: string,
+  repo: string
+): Promise<{ run: GithubWorkflowRun; steps: RealCiStep[] } | null> {
+  const runs = await listWorkflowRuns(adapter, owner, repo);
+  const run = runs[0];
+  if (!run) return null;
+  const { data } = await adapter.rest.actions.listJobsForWorkflowRun({ owner, repo, run_id: run.id });
+  const steps = data.jobs.flatMap((j) =>
+    (j.steps ?? []).map((s) => ({ name: s.name, status: s.status ?? "unknown", conclusion: s.conclusion ?? null }))
+  );
+  return { run, steps };
+}
+
 /**
  * workflow_dispatchでワークフローを起動する(Deploy用)。
  * 必ずHuman Approval済みの実行リクエスト経由でのみ呼ぶこと。
