@@ -63,6 +63,8 @@ export type RepositoryWithSyncState = {
 /**
  * GitHub上の自分が所有するリポジトリ一覧を取得し、
  * DBのGithubRepositoryレコードと突き合わせて(無ければ作成して)返す。
+ * 同期はオプトアウト方式: 新規発見したリポジトリはデフォルトで同期ONにする
+ * (不要なものは設定画面で個別にOFFにできる)。
  */
 export async function getRepositoriesForUser(
   userId: string
@@ -84,6 +86,8 @@ export async function getRepositoriesForUser(
         userId,
         fullName: repo.full_name,
         isPrivate: repo.private,
+        syncEnabled: true,
+        privateConsent: repo.private, // 自分所有リポジトリの自動登録なので同意済み扱い
       },
     });
 
