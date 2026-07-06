@@ -94,13 +94,19 @@ export type StudioPhaseId =
   | "releaseCandidate"
   | "approvalRepo" // Human Approval: Repository作成
   | "repoCreate"
+  | "approvalBranch" // Human Approval: Branch作成
+  | "branchCreate"
+  | "approvalCommit" // Human Approval: Commit
   | "commit"
   | "approvalPush" // Human Approval: Push
   | "push"
+  | "approvalPr" // Human Approval: Pull Request作成
   | "pullRequest"
   | "approvalMerge" // Human Approval: Merge
   | "merge"
   | "actionsRun"
+  | "approvalRelease" // Human Approval: Release
+  | "release"
   | "approvalDeploy" // Human Approval: Deploy
   | "deploy";
 
@@ -151,7 +157,17 @@ export type ClaudePrompt = {
   day: number;
 };
 
-export type ApprovalType = "repository" | "push" | "merge" | "deploy";
+export type ApprovalType =
+  | "repository"
+  | "branch"
+  | "commit"
+  | "push"
+  | "pullRequest"
+  | "merge"
+  | "release"
+  | "deploy";
+
+export type RiskLevel = "low" | "medium" | "high";
 
 export type ApprovalRequest = {
   id: string;
@@ -159,10 +175,17 @@ export type ApprovalRequest = {
   title: string;
   summary: string;
   details: string[]; // 承認画面に出す詳細(Diff概要・PR内容・テスト結果など)
-  plannedOperations: string[]; // 承認後に実行される予定のGitHub操作(表示のみ)
+  plannedOperations: string[]; // 承認後に実行されるGitHub操作(表示用)
   status: "pending" | "approved" | "rejected";
   day: number;
   resolvedDay: number | null;
+  riskLevel: RiskLevel;
+  requestedBy: string; // 申請したAI社員名
+  filesChanged: number;
+  testsSummary: string;
+  ceoComment: string | null; // Approve/Reject時のCEOコメント
+  executionResult: string[] | null; // 実GitHub API実行の結果(未実行はnull)
+  executedDay: number | null;
 };
 
 export type ActionsStepId =
@@ -190,6 +213,35 @@ export type StudioMeeting = {
   decision: string;
 };
 
+export type BranchPlan = {
+  name: string;
+  kind: "feature" | "bugfix" | "release";
+  purpose: string;
+};
+
+export type PrDraft = {
+  title: string;
+  description: string;
+  checklist: string[];
+  screenshots: string; // MVPではプレースホルダ文言
+  breakingChanges: string;
+  reviewPoints: string[];
+};
+
+// 実GitHubへ作成されたリソースへのリンク(実行するたびに埋まっていく)
+export type StudioGithubLink = {
+  owner: string;
+  repo: string;
+  htmlUrl: string;
+  defaultBranch: string;
+  branch: string | null;
+  issueNumber: number | null;
+  commitSha: string | null;
+  prNumber: number | null;
+  prUrl: string | null;
+  releaseUrl: string | null;
+};
+
 export type StudioProject = {
   id: string;
   proposal: AppProposal;
@@ -200,6 +252,11 @@ export type StudioProject = {
   prompts: ClaudePrompt[];
   actionsSteps: ActionsStep[];
   startedDay: number;
+  branchPlans: BranchPlan[];
+  workBranch: string; // 実装に使うブランチ(branchPlansから選択)
+  commitMessage: string;
+  prDraft: PrDraft;
+  github: StudioGithubLink | null; // 実GitHub接続時のみ埋まる
 };
 
 export type StudioLog = {

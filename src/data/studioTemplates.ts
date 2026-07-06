@@ -62,7 +62,13 @@ export const BUSINESS_MODELS = [
 export const QUALITY_TARGETS = ["クラッシュ率0.1%未満・ストア評価4.5以上", "Lighthouse 90点以上・テストカバレッジ80%", "初回表示1秒以内・エラーバジェット月0.1%"];
 
 // 開発工程(承認ゲート込み)。roleは主担当。
-export const STUDIO_PHASES: { id: StudioPhaseId; label: string; role: StudioRole | null; approval?: "repository" | "push" | "merge" | "deploy" }[] = [
+// Repository作成/Branch/Commit/Push/PR/Merge/Release/Deployの前には必ずHuman Approvalが入る。
+export const STUDIO_PHASES: {
+  id: StudioPhaseId;
+  label: string;
+  role: StudioRole | null;
+  approval?: "repository" | "branch" | "commit" | "push" | "pullRequest" | "merge" | "release" | "deploy";
+}[] = [
   { id: "idea", label: "Idea", role: "Product Manager" },
   { id: "requirements", label: "Requirements", role: "Product Manager" },
   { id: "architecture", label: "Architecture", role: "Architect" },
@@ -77,16 +83,25 @@ export const STUDIO_PHASES: { id: StudioPhaseId; label: string; role: StudioRole
   { id: "releaseCandidate", label: "Release Candidate", role: "Project Manager" },
   { id: "approvalRepo", label: "Human Approval(Repo作成)", role: null, approval: "repository" },
   { id: "repoCreate", label: "GitHub Repository作成", role: "DevOps Engineer" },
+  { id: "approvalBranch", label: "Human Approval(Branch)", role: null, approval: "branch" },
+  { id: "branchCreate", label: "Branch作成", role: "DevOps Engineer" },
+  { id: "approvalCommit", label: "Human Approval(Commit)", role: null, approval: "commit" },
   { id: "commit", label: "Commit", role: "Frontend Engineer" },
   { id: "approvalPush", label: "Human Approval(Push)", role: null, approval: "push" },
   { id: "push", label: "Push", role: "DevOps Engineer" },
+  { id: "approvalPr", label: "Human Approval(PR作成)", role: null, approval: "pullRequest" },
   { id: "pullRequest", label: "Pull Request", role: "Backend Engineer" },
   { id: "approvalMerge", label: "Human Approval(Merge)", role: null, approval: "merge" },
   { id: "merge", label: "Merge", role: "Reviewer" },
   { id: "actionsRun", label: "GitHub Actions", role: "DevOps Engineer" },
+  { id: "approvalRelease", label: "Human Approval(Release)", role: null, approval: "release" },
+  { id: "release", label: "Release", role: "Project Manager" },
   { id: "approvalDeploy", label: "Human Approval(Deploy)", role: null, approval: "deploy" },
   { id: "deploy", label: "Deploy", role: "DevOps Engineer" },
 ];
+
+// Conventional Commitsのタイプ(AI社員のコミットメッセージ生成に使用)
+export const COMMIT_TYPES = ["feat", "fix", "refactor", "docs", "test", "chore"] as const;
 
 // Claude Codeへ送るプロンプトのテンプレート(工程→役割別)
 export const CLAUDE_PROMPTS: Partial<Record<StudioPhaseId, { role: StudioRole; title: string; prompt: string }>> = {

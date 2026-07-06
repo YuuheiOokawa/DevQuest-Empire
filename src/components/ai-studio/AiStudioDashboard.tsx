@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   CalendarPlus,
+  ChevronRight,
   FolderGit2,
   Lightbulb,
   Package,
@@ -30,11 +32,18 @@ import {
   approveRequest,
   holdPlanningMeeting,
   loadStudioState,
+  markApprovalExecuted,
   rejectRequest,
   resetStudioState,
   startStudioProject,
 } from "@/services/aiStudioService";
-import type { StudioState } from "@/services/aiStudioTypes";
+import type { ApprovalRequest, StudioState } from "@/services/aiStudioTypes";
+import {
+  buildExecutionPayload,
+  executeApprovedAction,
+  fetchGithubOverview,
+  GithubClientError,
+} from "@/services/githubStudioClient";
 
 type StudioTab = "dev" | "approval" | "output" | "org";
 
@@ -50,6 +59,23 @@ const TABS: { id: StudioTab; label: string; icon: typeof Workflow }[] = [
 export function AiStudioDashboard() {
   const [state, setState] = useState<StudioState>(() => loadStudioState());
   const [tab, setTab] = useState<StudioTab>("dev");
+  const [githubLogin, setGithubLogin] = useState<string | null>(null);
+
+  // GitHub接続確認(OAuthログイン済みならトークンでプロフィールが取れる)。
+  // 60秒キャッシュ付きなのでRate Limitはほぼ消費しない。
+  useEffect(() => {
+    let cancelled = false;
+    fetchGithubOverview()
+      .then((o) => {
+        if (!cancelled) setGithubLogin(o.profile.login);
+      })
+      .catch(() => {
+        if (!cancelled) setGithubLogin(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const pendingApprovals = state.approvals.filter((a) => a.status === "pending").length;
 
@@ -59,20 +85,50 @@ export function AiStudioDashboard() {
     }
   };
 
+  // 承認済みリクエストの実行(実GitHub API)。CEOが実行ボタンを押したときのみ呼ばれる。
+  const handleExecute = async (approval: ApprovalRequest): Promise<{ ok: boolean; message?: string }> => {
+    if (!githubLogin) return { ok: false, message: "GitHub未接続です" };
+    const payload = buildExecutionPayload(approval, state, githubLogin);
+    if (!payload) {
+      // Commit承認はWeb APIではPushと一体のため、ここでは記録のみ
+      if (approval.type === "commit") {
+        setState((prev) =>
+          markApprovalExecuted(prev, approval.id, [
+            "Commit内容を確定しました(Web APIではCommitとPushが一体のため、Push承認の実行時に反映されます)",
+          ])
+        );
+        return { ok: true };
+      }
+      return { ok: false, message: "実行に必要な情報が不足しています(前工程の実行が未完了の可能性)" };
+    }
+    try {
+      const outcome = await executeApprovedAction(payload);
+      setState((prev) => markApprovalExecuted(prev, approval.id, outcome.resultLines, outcome.githubPatch));
+      return { ok: true };
+    } catch (e) {
+      const message = e instanceof GithubClientError ? e.message : "GitHub APIの実行に失敗しました";
+      return { ok: false, message };
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4 pb-24">
       {/* ステータスヘッダー */}
       <Card>
         <CardContent className="flex items-center justify-between py-3.5">
-          <div className="flex items-center gap-4 text-xs">
+          <div className="flex items-center gap-3 text-xs">
             <span className="font-semibold">Day {state.day}</span>
             <span className="text-muted-foreground flex items-center gap-1">
               <FolderGit2 className="size-3.5" />
               完成 {state.completedProjects.length} repo
             </span>
-            {state.project && (
-              <span className="text-muted-foreground truncate">開発中: {state.project.proposal.appName}</span>
-            )}
+            <span
+              className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                githubLogin ? "bg-emerald-500/15 text-emerald-600" : "bg-zinc-500/15 text-zinc-500"
+              }`}
+            >
+              {githubLogin ? `GitHub: @${githubLogin}` : "GitHub未接続"}
+            </span>
           </div>
           <Button variant="ghost" size="sm" onClick={handleReset} className="text-muted-foreground gap-1 text-xs">
             <RotateCcw className="size-3" />
@@ -105,6 +161,22 @@ export function AiStudioDashboard() {
 
       {tab === "dev" && (
         <>
+          {/* GitHubコンソールへの入口 */}
+          <Link href="/ai-studio/github">
+            <Card className="border-indigo-500/40 transition-colors hover:bg-accent">
+              <CardContent className="flex items-center gap-3 py-3">
+                <FolderGit2 className="size-5 shrink-0 text-indigo-500" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">GitHubコンソール</p>
+                  <p className="text-muted-foreground text-[11px]">
+                    Repositories / Issues / PRs / Actions / Releases / Approval Queue
+                  </p>
+                </div>
+                <ChevronRight className="text-muted-foreground size-4 shrink-0" />
+              </CardContent>
+            </Card>
+          </Link>
+
           {state.project ? (
             <>
               <StudioPipelineCard project={state.project} employees={state.employees} />
@@ -158,8 +230,10 @@ export function AiStudioDashboard() {
         <StudioApprovalPanel
           approvals={state.approvals}
           project={state.project}
-          onApprove={(id) => setState((prev) => approveRequest(prev, id))}
-          onReject={(id) => setState((prev) => rejectRequest(prev, id))}
+          githubLogin={githubLogin}
+          onApprove={(id, comment) => setState((prev) => approveRequest(prev, id, comment))}
+          onReject={(id, comment) => setState((prev) => rejectRequest(prev, id, comment))}
+          onExecute={handleExecute}
         />
       )}
 
