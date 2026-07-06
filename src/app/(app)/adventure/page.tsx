@@ -19,6 +19,7 @@ import { MonthlyMissionSection } from "@/components/adventure/MonthlyMissionSect
 import { EventSection } from "@/components/adventure/EventSection";
 import { BossSection } from "@/components/adventure/BossSection";
 import { AdventureHistorySection } from "@/components/adventure/AdventureHistorySection";
+import { AdventureSummaryBar } from "@/components/adventure/AdventureSummaryBar";
 import {
   AdventureCategoryTabs,
   type AdventureCategory,
@@ -39,6 +40,7 @@ export default async function AdventurePage() {
   const { eventTheme } = getSeasonalDefaults(new Date());
   const pastQuests = history.filter((q) => q.id !== todaysQuest.id);
   const bosses = missions?.filter((m) => m.period === "boss") ?? [];
+  const dailyMissions = missions?.filter((m) => m.period === "daily") ?? [];
 
   const categories: AdventureCategory[] = [
     {
@@ -116,6 +118,8 @@ export default async function AdventurePage() {
           クエスト・ミッション・イベントに挑戦して経験値を獲得しましょう。
         </p>
       </div>
+
+      <AdventureSummaryBar todaysQuest={todaysQuest} history={pastQuests} dailyMissions={dailyMissions} />
 
       {!missions ? (
         <p className="text-destructive text-sm">
