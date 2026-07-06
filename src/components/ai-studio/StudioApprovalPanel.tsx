@@ -107,8 +107,9 @@ export function StudioApprovalPanel({
                     : `#1 ${project.proposal.appName} MVP開発(Repo作成後に起票)`
                 }
               />
+              <InfoRow icon={GitCommitHorizontal} label="Branch" value={project.workBranch} />
               <InfoRow icon={GitCommitHorizontal} label="Commit" value={project.commitMessage} />
-              <InfoRow icon={FileDiff} label="Diff" value={`${project.filePlan.length} files changed`} />
+              <InfoRow icon={FileDiff} label="Changed Files / Diff" value={`${project.filePlan.length} files changed(+docs/CI)`} />
               <InfoRow
                 icon={GitPullRequest}
                 label="PR"
@@ -118,8 +119,20 @@ export function StudioApprovalPanel({
                     : `${project.workBranch} → main(作成前)`
                 }
               />
-              <InfoRow icon={ClipboardCheck} label="Review" value="Reviewer承認済み(指摘は対応済み)" />
-              <InfoRow icon={FlaskConical} label="Test Result" value="Unit 42 / E2E 12 passed / Coverage 84%" />
+              <InfoRow
+                icon={ClipboardCheck}
+                label="Review / Quality Score"
+                value={
+                  project.qualityScore !== null
+                    ? `5観点approve / ${project.qualityScore}/100`
+                    : "Review工程で確定"
+                }
+              />
+              <InfoRow
+                icon={FlaskConical}
+                label="Test / Coverage"
+                value={project.coverage !== null ? `全テスト passed / Coverage ${project.coverage}%` : "Testing工程で確定"}
+              />
             </div>
             {project.github?.htmlUrl && (
               <a

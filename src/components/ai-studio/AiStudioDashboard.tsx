@@ -22,8 +22,12 @@ import { StudioDocsCard } from "@/components/ai-studio/StudioDocsCard";
 import { StudioEmployeeList } from "@/components/ai-studio/StudioEmployeeList";
 import { StudioFilePlanCard } from "@/components/ai-studio/StudioFilePlanCard";
 import { StudioLogCard } from "@/components/ai-studio/StudioLogCard";
-import { StudioMarketCard } from "@/components/ai-studio/StudioMarketCard";
 import { StudioMeetingCard } from "@/components/ai-studio/StudioMeetingCard";
+import {
+  StudioDeployTargetCard,
+  StudioImprovementsCard,
+  StudioReviewsCard,
+} from "@/components/ai-studio/StudioQualityPanel";
 import { StudioPipelineCard } from "@/components/ai-studio/StudioPipelineCard";
 import { StudioPromptsCard } from "@/components/ai-studio/StudioPromptsCard";
 import { StudioProposalPicker } from "@/components/ai-studio/StudioProposalPicker";
@@ -35,6 +39,7 @@ import {
   markApprovalExecuted,
   rejectRequest,
   resetStudioState,
+  setDeployTarget,
   startStudioProject,
 } from "@/services/aiStudioService";
 import type { ApprovalRequest, StudioState } from "@/services/aiStudioTypes";
@@ -117,7 +122,7 @@ export function AiStudioDashboard() {
       <Card>
         <CardContent className="flex items-center justify-between py-3.5">
           <div className="flex items-center gap-3 text-xs">
-            <span className="font-semibold">Day {state.day}</span>
+            <span className="font-semibold">Step {state.day}</span>
             <span className="text-muted-foreground flex items-center gap-1">
               <FolderGit2 className="size-3.5" />
               完成 {state.completedProjects.length} repo
@@ -180,6 +185,12 @@ export function AiStudioDashboard() {
           {state.project ? (
             <>
               <StudioPipelineCard project={state.project} employees={state.employees} />
+              <StudioReviewsCard project={state.project} />
+              <StudioImprovementsCard project={state.project} />
+              <StudioDeployTargetCard
+                project={state.project}
+                onChange={(t) => setState((prev) => setDeployTarget(prev, t))}
+              />
               <StudioActionsCard steps={state.project.actionsSteps} />
             </>
           ) : state.proposals.length > 0 ? (
@@ -209,13 +220,33 @@ export function AiStudioDashboard() {
               <CardContent className="flex flex-col gap-2 py-4">
                 <h3 className="flex items-center gap-1.5 text-sm font-semibold">
                   <FolderGit2 className="text-primary size-4" />
-                  完成したRepository
+                  完成アプリ一覧({state.completedProjects.length}本)
                 </h3>
                 {state.completedProjects.map((p) => (
-                  <div key={p.repoName} className="flex items-center justify-between rounded-lg border px-2.5 py-2 text-xs">
-                    <span className="font-semibold">{p.appName}</span>
-                    <span className="text-muted-foreground font-mono">{p.repoName}</span>
-                    <span className="text-muted-foreground text-[10px]">Day {p.deployedDay} デプロイ</span>
+                  <div key={p.repoName} className="rounded-lg border px-2.5 py-2 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold">{p.appName}</span>
+                      <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600">
+                        {p.version}
+                      </span>
+                    </div>
+                    <p className="text-muted-foreground font-mono text-[11px]">{p.repoName}</p>
+                    <p className="text-muted-foreground text-[10px]">
+                      Deploy先: {p.deployTarget} ・ Step {p.deployedDay}
+                    </p>
+                    {p.changeLog.map((c, i) => (
+                      <p key={i} className="text-muted-foreground text-[10px]">
+                        ・{c}
+                      </p>
+                    ))}
+                    {p.htmlUrl && (
+                      <a href={p.htmlUrl} target="_blank" rel="noreferrer" className="text-primary text-[11px] underline">
+                        {p.htmlUrl}
+                      </a>
+                    )}
+                    <p className="text-muted-foreground text-[10px]">
+                      README・更新履歴・Roadmap・Wikiは「成果物」タブ、Issue/PRはGitHubコンソールで確認できます
+                    </p>
                   </div>
                 ))}
               </CardContent>
@@ -252,22 +283,23 @@ export function AiStudioDashboard() {
 
       {tab === "org" && (
         <>
-          <StudioMarketCard insights={state.insights} />
           <StudioMeetingCard meetings={state.meetings} />
           <StudioEmployeeList employees={state.employees} />
         </>
       )}
 
-      {/* 1日進めるボタン(固定) */}
-      <div className="fixed inset-x-0 bottom-20 z-40 mx-auto w-full max-w-2xl px-4">
-        <Button
-          onClick={() => setState((prev) => advanceStudioDay(prev))}
-          className="w-full gap-2 bg-indigo-600 py-5 text-sm font-bold text-white shadow-lg hover:bg-indigo-700"
-        >
-          <CalendarPlus className="size-4" />
-          1日進める(Day {state.day} → {state.day + 1})
-        </Button>
-      </div>
+      {/* 工程実行ボタン(固定)。実開発モード: 1回の実行で現在の工程を完了させる */}
+      {state.project && (
+        <div className="fixed inset-x-0 bottom-20 z-40 mx-auto w-full max-w-2xl px-4">
+          <Button
+            onClick={() => setState((prev) => advanceStudioDay(prev))}
+            className="w-full gap-2 bg-indigo-600 py-5 text-sm font-bold text-white shadow-lg hover:bg-indigo-700"
+          >
+            <CalendarPlus className="size-4" />
+            次の工程を実行する
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
