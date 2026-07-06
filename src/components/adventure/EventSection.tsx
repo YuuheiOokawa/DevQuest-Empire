@@ -77,7 +77,7 @@ export function EventSection({
                 <Crown className={`size-3.5 ${achieved ? "text-amber-500" : "text-muted-foreground"}`} />
                 {achieved ? (
                   <span className="font-semibold text-amber-600">
-                    限定称号「{limitedTitle}」の獲得条件を達成しました!
+                    限定称号「{limitedTitle}」を獲得しました!称号ページで装備できます
                   </span>
                 ) : (
                   <span className="text-muted-foreground">

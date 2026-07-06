@@ -3,6 +3,7 @@ import { generateTodaysQuest } from "@/lib/ai/questPrompt";
 import { recalcLevel } from "@/lib/game/exp";
 import { updateVillageBuildings, formatBuildingUpdate } from "@/lib/game/buildings";
 import { unlockProgressionRewards } from "@/lib/game/progression";
+import { grantEventTitleIfEligible } from "@/lib/game/eventTitles";
 
 function todayDateOnly(): Date {
   return new Date(new Date().toISOString().slice(0, 10));
@@ -127,6 +128,8 @@ export async function completeQuest(
     player.id,
     level
   );
+  // イベント限定称号(開催中+月間10回達成で実付与)。既存のトースト演出に乗せる
+  const eventTitles = await grantEventTitleIfEligible(player.id);
 
   return {
     newLevel: level,
@@ -135,6 +138,6 @@ export async function completeQuest(
     leveledUpBuildings,
     tierUpTo,
     unlockedAchievements,
-    unlockedTitles,
+    unlockedTitles: [...unlockedTitles, ...eventTitles],
   };
 }
