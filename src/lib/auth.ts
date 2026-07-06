@@ -37,6 +37,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     maxAge: 60 * 60 * 24 * 60, // 60日
     updateAge: 60 * 60 * 24, // 1日ごとに有効期限を延長
   },
+  events: {
+    // PrismaAdapterはAccountを初回連携時にしか作成せず、再ログインしても
+    // access_tokenが更新されない(失効トークンが残り続ける)ため、
+    // サインインのたびに最新トークンでDBを上書きする。
+    // これにより「トークン失効→再ログイン」で連携が確実に復旧する。
+    async signIn({ account }) {
+      if (account?.provider === "github" && account.access_token) {
+        await prisma.account.updateMany({
+          where: {
+            provider: "github",
+            providerAccountId: account.providerAccountId,
+          },
+          data: {
+            access_token: account.access_token,
+            refresh_token: account.refresh_token ?? undefined,
+            expires_at: account.expires_at ?? undefined,
+            token_type: account.token_type ?? undefined,
+            scope: account.scope ?? undefined,
+          },
+        });
+      }
+    },
+  },
   callbacks: {
     async session({ session, user }) {
       if (session.user) {
