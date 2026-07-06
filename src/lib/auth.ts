@@ -4,10 +4,12 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 
 // スコープ: read:user user:email に加え repo を要求する。
-// GitHub OAuth Appには「Privateリポジトリを読み取り専用で」という粒度のスコープが
-// 存在しないため、リポジトリへの書き込みは行わないという運用上の制約として扱う。
-// 実際にどのリポジトリを同期対象にするかは GithubRepository.syncEnabled /
-// privateConsent でユーザーがアプリ内で個別にオプトインする(18_Phase3参照)。
+// GitHub OAuth Appには「Privateリポジトリを読み取り専用で」という粒度のスコープが存在しない。
+// 書き込みはAI開発スタジオのHuman Approval済み操作(/api/ai-studio/github/execute)からのみ
+// 行い、それ以外の機能では読み取り専用として扱う運用。
+// 同期対象リポジトリは GithubRepository.syncEnabled / privateConsent で個別オプトイン。
+// クライアントID/シークレットは環境変数(AUTH_GITHUB_ID / AUTH_GITHUB_SECRET)で管理し、
+// アクセストークンはDBのAccountテーブルにのみ保存する(コード直書き禁止)。
 const GITHUB_SCOPE = "read:user user:email repo";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({

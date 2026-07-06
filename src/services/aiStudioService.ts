@@ -31,8 +31,20 @@ import type {
 // 将来の接続ポイント: executePlannedOperationsをGitHub API/CLI呼び出しに差し替える。
 
 const STORAGE_KEY = "devquest-ai-studio-v1";
-const STATE_VERSION = 1;
+const STATE_VERSION = 2; // v2: 承認8種(Branch/Commit/PR/Release追加)+実GitHub実行結果
 const MAX_LOGS = 150;
+
+// 承認タイプごとのリスクレベル。書き込み範囲が広い操作ほど高リスク。
+export const APPROVAL_RISK: Record<ApprovalType, "low" | "medium" | "high"> = {
+  repository: "medium",
+  branch: "low",
+  commit: "low",
+  push: "high",
+  pullRequest: "medium",
+  merge: "high",
+  release: "high",
+  deploy: "high",
+};
 
 function pick<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -157,6 +169,7 @@ export function startStudioProject(state: StudioState, proposalId: string): Stud
   const next: StudioState = structuredClone(state);
   const chosen = next.proposals.find((p) => p.id === proposalId)!;
   next.proposals = [];
+  const workBranch = `feature/${chosen.repoName}-mvp`;
   next.project = {
     id: `sproj-${Date.now()}`,
     proposal: chosen,
@@ -172,6 +185,32 @@ export function startStudioProject(state: StudioState, proposalId: string): Stud
     prompts: [],
     actionsSteps: ACTIONS_STEPS.map((s) => ({ ...s, status: "pending" as const })),
     startedDay: next.day,
+    branchPlans: [
+      { name: workBranch, kind: "feature", purpose: "MVP機能の実装用" },
+      { name: `bugfix/${chosen.repoName}-hotfix`, kind: "bugfix", purpose: "リリース後の緊急修正用(予約)" },
+      { name: `release/v1.0.0`, kind: "release", purpose: "リリース準備用(予約)" },
+    ],
+    workBranch,
+    commitMessage: `feat: ${chosen.appName} MVPを実装(${chosen.mvpScope.join("・")})`,
+    prDraft: {
+      title: `feat: ${chosen.appName} v1.0.0 MVP実装`,
+      description: `${chosen.problem}を解決する${chosen.category}アプリ「${chosen.appName}」のMVP実装です。`,
+      checklist: [
+        "TypeScriptエラーゼロ",
+        "Lintエラーゼロ",
+        "Build成功",
+        "単体テスト/E2Eテスト通過",
+        "ドキュメント(README/設計書)更新済み",
+      ],
+      screenshots: "(スクリーンショットはUI実装後に添付)",
+      breakingChanges: "なし(初回リリース)",
+      reviewPoints: [
+        "サービス層とリポジトリ層の責務分割",
+        "エラーハンドリングの網羅性",
+        `MVPスコープ(${chosen.mvpScope.join(" / ")})の充足`,
+      ],
+    },
+    github: null,
   };
   pushLog(next, "success", `CEOが企画「${chosen.appName}」を承認。プロジェクトを開始します(repo: ${chosen.repoName})`);
   saveStudioState(next);
@@ -182,36 +221,54 @@ export function startStudioProject(state: StudioState, proposalId: string): Stud
 
 function plannedOperationsFor(type: ApprovalType, project: StudioProject): string[] {
   const repo = project.proposal.repoName;
+  const owner = project.github?.owner ?? "(あなたのアカウント)";
   switch (type) {
     case "repository":
       return [
-        `gh repo create ${repo} --private --description "${project.proposal.appName}"`,
-        `git init && git remote add origin git@github.com:you/${repo}.git`,
-        "※ 実行にはGitHub APIトークンの設定が必要です(将来実装)",
+        `POST /user/repos  name=${repo} private=true auto_init=true`,
+        `相当CLI: gh repo create ${repo} --private --description "${project.proposal.appName}"`,
+      ];
+    case "branch":
+      return [
+        `POST /repos/${owner}/${repo}/git/refs  ref=refs/heads/${project.workBranch}`,
+        `相当CLI: git switch -c ${project.workBranch}`,
+      ];
+    case "commit":
+      return [
+        `Git Data API: blob作成 ×${Math.max(project.filePlan.length, 1)} → tree → commit`,
+        `Commit Message: ${project.commitMessage}`,
       ];
     case "push":
       return [
-        `git add -A && git commit -m "feat: initial implementation of ${project.proposal.appName}"`,
-        `git push -u origin feature/initial-implementation`,
-        "※ 実行にはGitHub APIトークンの設定が必要です(将来実装)",
+        `PATCH /repos/${owner}/${repo}/git/refs/heads/${project.workBranch}(ブランチ先頭を進める=Push)`,
+        `相当CLI: git push -u origin ${project.workBranch}`,
+      ];
+    case "pullRequest":
+      return [
+        `POST /repos/${owner}/${repo}/pulls  head=${project.workBranch} base=main`,
+        `Title: ${project.prDraft.title}`,
       ];
     case "merge":
       return [
-        `gh pr merge --squash --delete-branch`,
-        `gh workflow run ci.yml`,
-        "※ 実行にはGitHub APIトークンの設定が必要です(将来実装)",
+        `PUT /repos/${owner}/${repo}/pulls/{PR番号}/merge  method=squash`,
+        `相当CLI: gh pr merge --squash`,
+      ];
+    case "release":
+      return [
+        `POST /repos/${owner}/${repo}/releases  tag=v1.0.0 generate_release_notes=true`,
+        `相当CLI: gh release create v1.0.0 --generate-notes`,
       ];
     case "deploy":
       return [
-        `gh workflow run deploy.yml --ref main`,
-        `gh release create v1.0.0 --generate-notes`,
-        "※ 実行にはGitHub APIトークンの設定が必要です(将来実装)",
+        `POST /repos/${owner}/${repo}/actions/workflows/deploy.yml/dispatches  ref=main`,
+        `相当CLI: gh workflow run deploy.yml --ref main(Vercel/Cloudflareへの接続はトークン設定後)`,
       ];
   }
 }
 
 function approvalDetailsFor(type: ApprovalType, project: StudioProject): { title: string; summary: string; details: string[] } {
   const p = project.proposal;
+  const prNo = project.github?.prNumber ?? 1;
   switch (type) {
     case "repository":
       return {
@@ -224,45 +281,88 @@ function approvalDetailsFor(type: ApprovalType, project: StudioProject): { title
           `変更予定ファイル: ${project.filePlan.length}件`,
         ],
       };
+    case "branch":
+      return {
+        title: `Branch作成の承認: ${project.workBranch}`,
+        summary: "実装用のfeatureブランチを作成します。",
+        details: project.branchPlans.map(
+          (b) => `${b.kind === "feature" ? "★" : "・"} ${b.name}(${b.purpose})`
+        ),
+      };
+    case "commit":
+      return {
+        title: `Commitの承認: ${p.repoName}`,
+        summary: "実装内容をコミットとしてまとめます(Conventional Commits)。",
+        details: [
+          `Commit Message: ${project.commitMessage}`,
+          `対象ブランチ: ${project.workBranch}`,
+          `ファイル数: ${project.filePlan.length}件+ドキュメント${project.docs.length}件+CI設定`,
+        ],
+      };
     case "push":
       return {
         title: `Pushの承認: ${p.repoName}`,
-        summary: "初回実装のコミットをリモートへPushします。",
+        summary: `コミットを ${project.workBranch} へPushします。`,
         details: [
-          `Commit: feat: initial implementation of ${p.appName}`,
-          `Diff: +${1200 + Math.floor(Math.random() * 800)} -${Math.floor(Math.random() * 60)}(${project.filePlan.length} files)`,
-          ...project.filePlan.slice(0, 5).map((f) => `  ${f.action === "add" ? "A" : "M"} ${f.path}`),
+          `Commit Message: ${project.commitMessage}`,
+          `Push先Branch: ${project.workBranch}`,
+          `変更ファイル一覧(${project.filePlan.length}件+docs):`,
+          ...project.filePlan.slice(0, 6).map((f) => `  ${f.action === "add" ? "A" : "M"} ${f.path}`),
+          `変更行数: 約+${180 + project.filePlan.length * 12} -0(スキャフォールド+設計書)`,
+        ],
+      };
+    case "pullRequest":
+      return {
+        title: `Pull Request作成の承認: ${p.repoName}`,
+        summary: `PR「${project.prDraft.title}」を作成します。`,
+        details: [
+          `Title: ${project.prDraft.title}`,
+          `Description: ${project.prDraft.description}`,
+          `Checklist: ${project.prDraft.checklist.join(" / ")}`,
+          `Breaking Changes: ${project.prDraft.breakingChanges}`,
+          `Review Points: ${project.prDraft.reviewPoints.join(" / ")}`,
         ],
       };
     case "merge":
       return {
-        title: `Mergeの承認: ${p.repoName} PR #1`,
-        summary: `PR「${p.appName} v1.0.0」をmainへマージします。`,
+        title: `Mergeの承認: ${p.repoName} PR #${prNo}`,
+        summary: `PR「${project.prDraft.title}」をmainへマージします(squash)。`,
         details: [
-          "PR: #1 feature/initial-implementation → main",
-          "Review: Reviewer承認済み(指摘2件は対応済み)",
+          `PR: #${prNo} ${project.workBranch} → main`,
+          "Review: Reviewer承認済み(指摘は対応済み)",
           "Test Result: Unit 42 passed / E2E 12 passed / Coverage 84%",
+        ],
+      };
+    case "release":
+      return {
+        title: `Releaseの承認: ${p.appName} v1.0.0`,
+        summary: "GitHub Releaseを作成し、リリースノートを公開します。",
+        details: [
+          "Tag: v1.0.0(main先頭)",
+          `Release Note: ${p.appName} v1.0.0 — ${p.mvpScope.join(" / ")}`,
+          "GitHub Actions: 全ステップ成功済み",
         ],
       };
     case "deploy":
       return {
         title: `Deployの承認: ${p.appName} v1.0.0`,
-        summary: "本番環境へデプロイし、リリースを公開します。",
+        summary: "deploy.ymlワークフローを起動し、本番環境へデプロイします。",
         details: [
           "GitHub Actions: 全ステップ成功(Lint/Type Check/Build/Test/Coverage/Security)",
           "Artifact: build-v1.0.0.zip",
-          `Release: v1.0.0(${p.appName})`,
+          "デプロイ先: Vercel / Cloudflare(トークン設定後に有効化)",
         ],
       };
   }
 }
 
-export function approveRequest(state: StudioState, approvalId: string): StudioState {
+export function approveRequest(state: StudioState, approvalId: string, comment?: string): StudioState {
   const next: StudioState = structuredClone(state);
   const approval = next.approvals.find((a) => a.id === approvalId);
   if (!approval || approval.status !== "pending" || !next.project) return state;
   approval.status = "approved";
   approval.resolvedDay = next.day;
+  approval.ceoComment = comment?.trim() ? comment.trim() : null;
 
   // 承認フェーズを完了して次へ進める
   const phase = next.project.phases[next.project.phaseIndex];
@@ -276,12 +376,13 @@ export function approveRequest(state: StudioState, approvalId: string): StudioSt
   return next;
 }
 
-export function rejectRequest(state: StudioState, approvalId: string): StudioState {
+export function rejectRequest(state: StudioState, approvalId: string, comment?: string): StudioState {
   const next: StudioState = structuredClone(state);
   const approval = next.approvals.find((a) => a.id === approvalId);
   if (!approval || approval.status !== "pending" || !next.project) return state;
   approval.status = "rejected";
   approval.resolvedDay = next.day;
+  approval.ceoComment = comment?.trim() ? comment.trim() : null;
 
   // 1つ前の作業フェーズへ差し戻し、AI社員が手直ししてから再申請する
   const project = next.project;
@@ -296,10 +397,45 @@ export function rejectRequest(state: StudioState, approvalId: string): StudioSta
   return next;
 }
 
-// 承認済みリクエストの「実行」ボタン(MVP: 実行予定内容の確認のみ)
+// 承認済みリクエストの「実行」ボタン(GitHub未接続時: 実行予定内容の確認のみ)
 export function executePlannedOperations(approval: ApprovalRequest): string[] {
-  // 将来ここをGitHub API / GitHub CLI / Claude Code呼び出しに差し替える。
   return approval.plannedOperations;
+}
+
+/**
+ * 実GitHub API実行後の結果を状態へ記録する。
+ * githubPatchには作成されたリソース(owner/repo/branch/PR番号など)を渡す。
+ */
+export function markApprovalExecuted(
+  state: StudioState,
+  approvalId: string,
+  resultLines: string[],
+  githubPatch?: Partial<NonNullable<StudioProject["github"]>>
+): StudioState {
+  const next: StudioState = structuredClone(state);
+  const approval = next.approvals.find((a) => a.id === approvalId);
+  if (!approval || approval.status !== "approved") return state;
+  approval.executionResult = resultLines;
+  approval.executedDay = next.day;
+  if (next.project && githubPatch) {
+    next.project.github = {
+      owner: "",
+      repo: next.project.proposal.repoName,
+      htmlUrl: "",
+      defaultBranch: "main",
+      branch: null,
+      issueNumber: null,
+      commitSha: null,
+      prNumber: null,
+      prUrl: null,
+      releaseUrl: null,
+      ...(next.project.github ?? {}),
+      ...githubPatch,
+    };
+  }
+  pushLog(next, "success", `【実行完了】${approval.title}`);
+  saveStudioState(next);
+  return next;
 }
 
 // --- ドキュメント生成 ---
@@ -416,6 +552,11 @@ export function advanceStudioDay(state: StudioState): StudioState {
         if (phase.status !== "awaiting_approval") {
           phase.status = "awaiting_approval";
           const info = approvalDetailsFor(template.approval, project);
+          // 申請者は承認後の工程を担当するAI社員(いなければPM)
+          const executorRole = STUDIO_PHASES[project.phaseIndex + 1]?.role;
+          const requester =
+            (executorRole ? employeeByRole(next, executorRole) : undefined) ??
+            employeeByRole(next, "Project Manager");
           next.approvals = [
             {
               id: `apv-${template.approval}-${project.id}-${next.day}`,
@@ -425,9 +566,16 @@ export function advanceStudioDay(state: StudioState): StudioState {
               status: "pending" as const,
               day: next.day,
               resolvedDay: null,
+              riskLevel: APPROVAL_RISK[template.approval],
+              requestedBy: requester ? `${requester.name}(${requester.role})` : "AI社員",
+              filesChanged: project.filePlan.length,
+              testsSummary: "Unit 42 / E2E 12 passed / Coverage 84%",
+              ceoComment: null,
+              executionResult: null,
+              executedDay: null,
             },
             ...next.approvals,
-          ].slice(0, 30);
+          ].slice(0, 40);
           pushLog(next, "approval", `【承認依頼】${info.title}(承認タブから確認してください)`);
         }
       } else {
