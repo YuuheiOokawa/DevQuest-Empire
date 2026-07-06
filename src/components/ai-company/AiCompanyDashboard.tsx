@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
+  Bot,
   Building2,
   Plus,
   Smartphone,
@@ -144,6 +145,22 @@ export function AiCompanyDashboard() {
               </CardContent>
             </Card>
           )}
+
+          {/* AI開発スタジオ(実開発パイプライン)への入口 */}
+          <Link href="/ai-studio">
+            <Card className="border-indigo-500/40 transition-colors hover:bg-accent">
+              <CardContent className="flex items-center gap-3 py-3.5">
+                <Bot className="size-5 shrink-0 text-indigo-500" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">AI開発スタジオ(実開発モード)</p>
+                  <p className="text-muted-foreground text-[11px]">
+                    AI社員が本物のGitHub開発フローを進める。Repo作成/Push/Merge/Deployはあなたの承認制
+                  </p>
+                </div>
+                <ChevronRight className="text-muted-foreground size-4 shrink-0" />
+              </CardContent>
+            </Card>
+          </Link>
 
           {/* 社内GitHubへの入口 */}
           <Link href="/ai-company/github">
