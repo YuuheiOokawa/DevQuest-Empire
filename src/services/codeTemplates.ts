@@ -6,10 +6,35 @@ import type { StudioProject } from "@/services/aiStudioTypes";
 // 単体テスト付き)として生成する。カテゴリ名・機能名はプロジェクト企画から埋め込む。
 // ANTHROPIC_API_KEY設定時はこの上にClaude API生成コードが上書きされる(generate-code)。
 
+// カテゴリ別のドメイン特化プリセット。生成アプリの名詞・数値ラベル・
+// 統計の呼び方をカテゴリに合わせ、「らしい」アプリにする。
+const CATEGORY_PRESETS: Record<string, { noun: string; amountLabel: string; amountHint: string; totalLabel: string }> = {
+  家計簿: { noun: "支出", amountLabel: "金額(円)", amountHint: "1200", totalLabel: "合計支出" },
+  資格学習: { noun: "学習", amountLabel: "学習時間(分)", amountHint: "30", totalLabel: "合計時間(分)" },
+  AI日記: { noun: "日記", amountLabel: "気分スコア(1-10)", amountHint: "7", totalLabel: "気分累計" },
+  タスク管理: { noun: "タスク", amountLabel: "所要時間(分)", amountHint: "25", totalLabel: "合計時間(分)" },
+  筋トレ管理: { noun: "トレーニング", amountLabel: "回数・重量", amountHint: "10", totalLabel: "合計回数" },
+  旅行計画: { noun: "予定", amountLabel: "予算(円)", amountHint: "5000", totalLabel: "合計予算" },
+  献立管理: { noun: "献立", amountLabel: "調理時間(分)", amountHint: "20", totalLabel: "合計時間(分)" },
+  GitHub分析: { noun: "活動", amountLabel: "コミット数", amountHint: "5", totalLabel: "合計コミット" },
+  ポートフォリオ: { noun: "作品", amountLabel: "工数(時間)", amountHint: "8", totalLabel: "合計工数" },
+  習慣管理: { noun: "習慣", amountLabel: "実施回数", amountHint: "1", totalLabel: "合計回数" },
+  メモ: { noun: "メモ", amountLabel: "重要度(1-5)", amountHint: "3", totalLabel: "重要度累計" },
+  PDF管理: { noun: "書類", amountLabel: "ページ数", amountHint: "10", totalLabel: "合計ページ" },
+  予約管理: { noun: "予約", amountLabel: "料金(円)", amountHint: "3000", totalLabel: "合計売上" },
+  CRM: { noun: "商談", amountLabel: "見込み金額(円)", amountHint: "100000", totalLabel: "パイプライン合計" },
+  ブログCMS: { noun: "記事", amountLabel: "文字数", amountHint: "1500", totalLabel: "合計文字数" },
+  勤怠管理: { noun: "勤務", amountLabel: "勤務時間(分)", amountHint: "480", totalLabel: "合計時間(分)" },
+  在庫管理: { noun: "入出庫", amountLabel: "数量", amountHint: "10", totalLabel: "在庫変動合計" },
+};
+
+const DEFAULT_PRESET = { noun: "記録", amountLabel: "数値(回数・金額など)", amountHint: "1", totalLabel: "合計" };
+
 export function buildRealScaffold(project: StudioProject): { path: string; content: string }[] {
   const p = project.proposal;
   const app = p.appName;
   const desc = `${p.problem}を解決する${p.category}アプリ`;
+  const preset = CATEGORY_PRESETS[p.category] ?? DEFAULT_PRESET;
 
   return [
     {
@@ -162,6 +187,19 @@ export function summarize(entries: Entry[]): { count: number; total: number; str
   }
   return { count, total, streakDays };
 }
+
+// 月別サマリー(YYYY-MM単位の件数と合計。新しい月が先頭)
+export function monthlyTotals(entries: Entry[]): { month: string; count: number; total: number }[] {
+  const map = new Map<string, { count: number; total: number }>();
+  for (const e of entries) {
+    const month = e.createdAt.slice(0, 7);
+    const cur = map.get(month) ?? { count: 0, total: 0 };
+    map.set(month, { count: cur.count + 1, total: cur.total + e.amount });
+  }
+  return [...map.entries()]
+    .map(([month, v]) => ({ month, ...v }))
+    .sort((a, b) => b.month.localeCompare(a.month));
+}
 `,
     },
     {
@@ -228,7 +266,7 @@ export function removeEntry(id: string): void {
       content: `"use client";
 
 import { useEffect, useState } from "react";
-import { summarize } from "@/lib/logic";
+import { monthlyTotals, summarize } from "@/lib/logic";
 import type { Entry } from "@/lib/types";
 import { addEntry, listEntries, removeEntry } from "@/services/entryService";
 
@@ -276,8 +314,8 @@ export default function Home() {
       </div>
 
       <div className="stats">
-        <div className="stat"><b>{stats.count}</b><span className="muted">記録数</span></div>
-        <div className="stat"><b>{stats.total.toLocaleString()}</b><span className="muted">合計</span></div>
+        <div className="stat"><b>{stats.count}</b><span className="muted">${preset.noun}数</span></div>
+        <div className="stat"><b>{stats.total.toLocaleString()}</b><span className="muted">${preset.totalLabel}</span></div>
         <div className="stat"><b>{stats.streakDays}日</b><span className="muted">連続記録</span></div>
       </div>
 
@@ -288,8 +326,8 @@ export default function Home() {
             <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="今日の${p.category}" />
           </label>
           <label>
-            数値(回数・金額など)
-            <input type="number" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            ${preset.amountLabel}
+            <input type="number" min="0" placeholder="${preset.amountHint}" value={amount} onChange={(e) => setAmount(e.target.value)} />
           </label>
           <label>
             メモ(任意)
@@ -325,6 +363,20 @@ export default function Home() {
           </ul>
         )}
       </div>
+
+      {entries.length > 0 && (
+        <div className="card">
+          <h2>月別サマリー</h2>
+          <ul>
+            {monthlyTotals(entries).map((m) => (
+              <li key={m.month}>
+                <span><strong>{m.month}</strong></span>
+                <span className="muted">{m.count}件 ・ ${preset.totalLabel} {m.total.toLocaleString()}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </main>
   );
 }
@@ -333,7 +385,7 @@ export default function Home() {
     {
       path: "tests/logic.test.ts",
       content: `import { describe, expect, it } from "vitest";
-import { summarize, validateEntry } from "../src/lib/logic";
+import { monthlyTotals, summarize, validateEntry } from "../src/lib/logic";
 import type { Entry } from "../src/lib/types";
 
 describe("validateEntry", () => {
@@ -368,6 +420,23 @@ describe("summarize", () => {
   });
   it("今日の記録がなければ連続0日", () => {
     expect(summarize([entry(2, 1)]).streakDays).toBe(0);
+  });
+});
+
+describe("monthlyTotals", () => {
+  it("月単位で件数と合計を集計し、新しい月が先頭になる", () => {
+    const e = (createdAt: string, amount: number): Entry => ({
+      id: createdAt, title: "t", amount, note: "", createdAt,
+    });
+    const result = monthlyTotals([
+      e("2026-06-01T00:00:00.000Z", 10),
+      e("2026-06-15T00:00:00.000Z", 5),
+      e("2026-07-01T00:00:00.000Z", 3),
+    ]);
+    expect(result).toEqual([
+      { month: "2026-07", count: 1, total: 3 },
+      { month: "2026-06", count: 2, total: 15 },
+    ]);
   });
 });
 `,
