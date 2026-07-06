@@ -33,21 +33,29 @@ import { StudioPromptsCard } from "@/components/ai-studio/StudioPromptsCard";
 import { StudioProposalPicker } from "@/components/ai-studio/StudioProposalPicker";
 import {
   advanceStudioDay,
+  applyAiReviews,
+  applyRealCiResult,
   approveRequest,
+  attachMarketSignals,
+  buildImplementationPack,
   holdPlanningMeeting,
   loadStudioState,
   markApprovalExecuted,
+  markImprovementIssued,
   rejectRequest,
   resetStudioState,
   setDeployTarget,
   startStudioProject,
 } from "@/services/aiStudioService";
-import type { ApprovalRequest, StudioState } from "@/services/aiStudioTypes";
+import type { ApprovalRequest, ImprovementProposal, StudioState } from "@/services/aiStudioTypes";
 import {
   buildExecutionPayload,
   executeApprovedAction,
+  fetchCiResult,
   fetchGithubOverview,
+  fetchMarketSignals,
   GithubClientError,
+  requestAiReview,
 } from "@/services/githubStudioClient";
 
 type StudioTab = "dev" | "approval" | "output" | "org";
@@ -113,6 +121,59 @@ export function AiStudioDashboard() {
     } catch (e) {
       const message = e instanceof GithubClientError ? e.message : "GitHub APIの実行に失敗しました";
       return { ok: false, message };
+    }
+  };
+
+  // 実CI結果の自動取り込み(実リポジトリ作成後のみ)
+  const handleFetchCi = async (): Promise<string | null> => {
+    const gh = state.project?.github;
+    if (!gh?.owner) return "実リポジトリ作成後に取得できます";
+    try {
+      const { result } = await fetchCiResult(gh.owner, gh.repo);
+      if (!result) return "まだワークフローの実行履歴がありません(Push後にCIが走ります)";
+      setState((prev) => applyRealCiResult(prev, result.run, result.steps));
+      return `取り込み完了: ${result.run.name} → ${result.run.conclusion ?? result.run.status}`;
+    } catch (e) {
+      return e instanceof GithubClientError ? e.message : "実CI結果の取得に失敗しました";
+    }
+  };
+
+  // GitHub Search APIで市場シグナルを取得して企画へ添付
+  const handleFetchSignals = async (proposal: (typeof state.proposals)[number]) => {
+    try {
+      const { signals } = await fetchMarketSignals(`${proposal.category} app`);
+      setState((prev) => attachMarketSignals(prev, proposal.id, signals));
+    } catch {
+      /* 未接続時は何もしない(ルールベース分析のまま) */
+    }
+  };
+
+  // Claude APIによる実レビュー(キー未設定時はルールベースを維持)
+  const handleAiReview = async (): Promise<string | null> => {
+    if (!state.project) return null;
+    const res = await requestAiReview(state.project);
+    if (!res.ok) return "ANTHROPIC_API_KEY未設定のため、ルールベースレビューを維持しました(キー設定で実AIレビューに切替)";
+    setState((prev) => applyAiReviews(prev, res.reviews));
+    return "Claude APIによる実レビューへ差し替えました";
+  };
+
+  // 改善提案をGitHub Issueとして起票(人間のクリックが起点)
+  const handleCreateIssue = async (imp: ImprovementProposal) => {
+    const gh = state.project?.github;
+    if (!gh?.owner) return;
+    try {
+      const outcome = await executeApprovedAction({
+        action: "createIssue",
+        owner: gh.owner,
+        repo: gh.repo,
+        title: `[${imp.category}] ${imp.title}`,
+        body: `${imp.detail}\n\n提案: ${imp.proposedBy}(DevQuest Empire AI Studio)`,
+      });
+      const line = outcome.resultLines.find((l) => l.startsWith("Issue作成: #"));
+      const num = line ? Number(line.replace("Issue作成: #", "")) : NaN;
+      if (!Number.isNaN(num)) setState((prev) => markImprovementIssued(prev, imp.id, num));
+    } catch {
+      /* 失敗時はボタンが残るので再試行可能 */
     }
   };
 
@@ -185,16 +246,26 @@ export function AiStudioDashboard() {
           {state.project ? (
             <>
               <StudioPipelineCard project={state.project} employees={state.employees} />
-              <StudioReviewsCard project={state.project} />
-              <StudioImprovementsCard project={state.project} />
+              <StudioReviewsCard project={state.project} onAiReview={handleAiReview} />
+              <StudioImprovementsCard
+                project={state.project}
+                onCreateIssue={githubLogin ? handleCreateIssue : undefined}
+              />
               <StudioDeployTargetCard
                 project={state.project}
                 onChange={(t) => setState((prev) => setDeployTarget(prev, t))}
               />
-              <StudioActionsCard steps={state.project.actionsSteps} />
+              <StudioActionsCard
+                steps={state.project.actionsSteps}
+                onFetchReal={githubLogin && state.project.github ? handleFetchCi : undefined}
+              />
             </>
           ) : state.proposals.length > 0 ? (
-            <StudioProposalPicker proposals={state.proposals} onSelect={(id) => setState((prev) => startStudioProject(prev, id))} />
+            <StudioProposalPicker
+              proposals={state.proposals}
+              onSelect={(id) => setState((prev) => startStudioProject(prev, id))}
+              onFetchSignals={githubLogin ? handleFetchSignals : undefined}
+            />
           ) : (
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center gap-3 py-6 text-center">
@@ -276,7 +347,10 @@ export function AiStudioDashboard() {
             </p>
           )}
           <StudioFilePlanCard filePlan={state.project?.filePlan ?? state.archive?.filePlan ?? []} />
-          <StudioPromptsCard prompts={state.project?.prompts ?? state.archive?.prompts ?? []} />
+          <StudioPromptsCard
+            prompts={state.project?.prompts ?? state.archive?.prompts ?? []}
+            pack={state.project ? buildImplementationPack(state.project) : undefined}
+          />
           <StudioDocsCard docs={state.project?.docs ?? state.archive?.docs ?? []} />
         </>
       )}
