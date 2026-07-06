@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import {
   getOctokitForUser,
+  getRepositoriesForUser,
   fetchCommits,
   fetchClosedIssues,
   fetchPullRequestsByUser,
@@ -180,6 +181,24 @@ export async function syncGithubForUser(userId: string): Promise<SyncResult> {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
   const octokit = await getOctokitForUser(userId);
   const githubLogin = user.githubLogin ?? "";
+
+  // 同期のたびにGitHub上のリポジトリ一覧を再取得して自動登録する。
+  // 新しく作ったリポジトリ(AIスタジオ生成分を含む)は設定不要でデフォルト同期ONになる。
+  try {
+    await getRepositoriesForUser(userId);
+  } catch (err) {
+    console.error("repository discovery failed (continuing with known repos)", err);
+  }
+
+  // 移行措置: 全リポジトリがOFF(=オプトイン時代の初期値のまま未設定)なら
+  // 一括でONにする。一部だけOFFの場合はユーザーの意図的な設定として尊重する。
+  const allRepos = await prisma.githubRepository.findMany({ where: { userId } });
+  if (allRepos.length > 0 && allRepos.every((r) => !r.syncEnabled)) {
+    await prisma.githubRepository.updateMany({
+      where: { userId },
+      data: { syncEnabled: true },
+    });
+  }
 
   const repositories = await prisma.githubRepository.findMany({
     where: { userId, syncEnabled: true },
