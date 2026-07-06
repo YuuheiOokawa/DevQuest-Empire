@@ -33,6 +33,7 @@ import {
 import type { ApprovalRequest, RiskLevel, StudioState } from "@/services/aiStudioTypes";
 import {
   buildExecutionPayload,
+  buildPushFilesWithAi,
   executeApprovedAction,
   fetchGithubOverview,
   fetchRepoDetail,
@@ -160,8 +161,20 @@ export function GithubConsolePanel() {
     }
     setExecutingId(approval.id);
     try {
+      let extraLines: string[] = [];
+      if (approval.type === "push" && studio.project) {
+        const { files, aiGenerated } = await buildPushFilesWithAi(studio.project);
+        payload.files = files;
+        extraLines = [
+          aiGenerated
+            ? "コード生成: Claude APIによる実装コード(実コード)を含めてPushしました"
+            : "コード生成: スキャフォールド(ANTHROPIC_API_KEY設定で実コード生成に切替)",
+        ];
+      }
       const outcome = await executeApprovedAction(payload);
-      setStudio((prev) => markApprovalExecuted(prev, approval.id, outcome.resultLines, outcome.githubPatch));
+      setStudio((prev) =>
+        markApprovalExecuted(prev, approval.id, [...outcome.resultLines, ...extraLines], outcome.githubPatch)
+      );
     } catch (e) {
       setExecError(e instanceof GithubClientError ? e.message : "GitHub APIの実行に失敗しました");
     } finally {
