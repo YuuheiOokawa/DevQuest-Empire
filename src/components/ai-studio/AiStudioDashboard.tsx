@@ -38,7 +38,10 @@ import {
   approveRequest,
   attachMarketSignals,
   buildImplementationPack,
+  cancelStudioProject,
+  exportStudioState,
   holdPlanningMeeting,
+  importStudioState,
   loadStudioState,
   markApprovalExecuted,
   markImprovementIssued,
@@ -275,11 +278,21 @@ export function AiStudioDashboard() {
               />
             </>
           ) : state.proposals.length > 0 ? (
-            <StudioProposalPicker
-              proposals={state.proposals}
-              onSelect={(id) => setState((prev) => startStudioProject(prev, id))}
-              onFetchSignals={githubLogin ? handleFetchSignals : undefined}
-            />
+            <>
+              <StudioProposalPicker
+                proposals={state.proposals}
+                onSelect={(id) => setState((prev) => startStudioProject(prev, id))}
+                onFetchSignals={githubLogin ? handleFetchSignals : undefined}
+              />
+              <Button
+                variant="outline"
+                onClick={() => setState((prev) => holdPlanningMeeting(prev))}
+                className="gap-1.5 text-xs"
+              >
+                <Sparkles className="size-3.5" />
+                どれも違う — 別の3案を出させる
+              </Button>
+            </>
           ) : (
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center gap-3 py-6 text-center">
@@ -375,6 +388,53 @@ export function AiStudioDashboard() {
           <StudioEmployeeList employees={state.employees} />
         </>
       )}
+
+      {/* データ管理: 中止 / エクスポート / インポート */}
+      <div className="text-muted-foreground flex flex-wrap items-center gap-3 text-[11px]">
+        {state.project && (
+          <button
+            type="button"
+            className="text-red-500 underline"
+            onClick={() => {
+              if (window.confirm(`プロジェクト「${state.project!.proposal.appName}」を中止しますか?(承認待ちも取り下げられます)`)) {
+                setState((prev) => cancelStudioProject(prev));
+              }
+            }}
+          >
+            プロジェクトを中止
+          </button>
+        )}
+        <button
+          type="button"
+          className="underline"
+          onClick={() => {
+            const blob = new Blob([exportStudioState(state)], { type: "application/json" });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = `devquest-ai-studio-backup-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+          }}
+        >
+          セーブデータをエクスポート
+        </button>
+        <label className="cursor-pointer underline">
+          インポート
+          <input
+            type="file"
+            accept="application/json"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const imported = importStudioState(await file.text());
+              if (imported) setState(imported);
+              else window.alert("インポートに失敗しました(バージョン不一致または破損データ)");
+              e.target.value = "";
+            }}
+          />
+        </label>
+      </div>
 
       {/* 工程実行ボタン(固定)。実開発モード: 1回の実行で現在の工程を完了させる */}
       {state.project && (

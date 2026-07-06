@@ -187,6 +187,38 @@ export function holdPlanningMeeting(state: StudioState): StudioState {
   return next;
 }
 
+/** プロジェクト中止: 進行中プロジェクトを破棄し、未処理の承認依頼も取り下げる。 */
+export function cancelStudioProject(state: StudioState): StudioState {
+  if (!state.project) return state;
+  const next: StudioState = structuredClone(state);
+  const name = next.project!.proposal.appName;
+  next.approvals = next.approvals.map((a) =>
+    a.status === "pending" ? { ...a, status: "rejected" as const, resolvedDay: next.day, ceoComment: "プロジェクト中止" } : a
+  );
+  next.project = null;
+  pushLog(next, "warning", `CEOの判断でプロジェクト「${name}」を中止しました`);
+  saveStudioState(next);
+  return next;
+}
+
+/** セーブデータのエクスポート(JSON文字列)。 */
+export function exportStudioState(state: StudioState): string {
+  return JSON.stringify(state, null, 2);
+}
+
+/** セーブデータのインポート。version不一致・破損時はnullを返す。 */
+export function importStudioState(json: string): StudioState | null {
+  try {
+    const parsed = JSON.parse(json) as StudioState;
+    if (parsed.version !== STATE_VERSION || !Array.isArray(parsed.employees)) return null;
+    if (parsed.archive === undefined) parsed.archive = null;
+    saveStudioState(parsed);
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 /** デプロイ先の変更(Deploy承認前ならいつでも変更可)。 */
 export function setDeployTarget(state: StudioState, target: StudioProject["deployTarget"]): StudioState {
   if (!state.project) return state;
