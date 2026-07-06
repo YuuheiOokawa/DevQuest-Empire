@@ -14,12 +14,21 @@ import type { MissionItem } from "@/components/missions/MissionList";
 // ボスは週替わりの高難度ミッション(missions.tsのperiod="boss")を
 // 「討伐対象」として見せるための専用UI。バックエンドは通常ミッションと
 // 共通(/api/missions/[id]/claim)で、表示のみHPバー風に変える。
+// ボスIDから決定的にドロップ品を決める(ルールベースの演出)
+const DROP_POOL = ["竜断ちの大剣", "賢者のローブ", "疾風のブーツ", "不滅の盾", "魔導のオーブ", "王家の指輪"];
+function dropFor(bossId: string): string {
+  let h = 0;
+  for (const c of bossId) h = (h * 31 + c.charCodeAt(0)) % 9973;
+  return DROP_POOL[h % DROP_POOL.length];
+}
+
 export function BossSection({ bosses }: { bosses: MissionItem[] }) {
   const router = useRouter();
   const reportGrowthResult = useLevelUp();
   const [items, setItems] = useState(bosses);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [dropBanner, setDropBanner] = useState<string | null>(null);
 
   async function handleClaim(bossId: string) {
     setPendingId(bossId);
@@ -34,6 +43,8 @@ export function BossSection({ bosses }: { bosses: MissionItem[] }) {
       setItems((prev) =>
         prev.map((b) => (b.id === bossId ? { ...b, claimed: true, claimable: false } : b))
       );
+      const boss = items.find((b) => b.id === bossId);
+      if (boss) setDropBanner(`\u{1F389} ${boss.name}\u3092\u8a0e\u4f10\uff01\u300c${dropFor(bossId)}\u300d\u3092\u30c9\u30ed\u30c3\u30d7\u3057\u307e\u3057\u305f`);
       reportGrowthResult(result);
       router.refresh();
     } finally {
@@ -59,6 +70,11 @@ export function BossSection({ bosses }: { bosses: MissionItem[] }) {
   return (
     <div className="flex flex-col gap-3">
       {error && <p className="text-destructive text-sm">{error}</p>}
+      {dropBanner && (
+        <div className="animate-in fade-in slide-in-from-top-2 rounded-xl border border-amber-400 bg-amber-50 px-3 py-2.5 text-sm font-semibold text-amber-700 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+          {dropBanner}
+        </div>
+      )}
       {items.map((boss) => {
         const Icon = missionIcon(boss.metric);
         const remainingHp = Math.max(boss.targetValue - boss.progressValue, 0);
@@ -125,7 +141,7 @@ export function BossSection({ bosses }: { bosses: MissionItem[] }) {
                 {boss.claimed ? (
                   <Badge variant="secondary" className="gap-1">
                     <Trophy className="size-3" />
-                    討伐済み
+                    討伐済み ・ ドロップ: {dropFor(boss.id)}
                   </Badge>
                 ) : boss.claimable ? (
                   <Button

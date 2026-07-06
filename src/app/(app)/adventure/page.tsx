@@ -20,6 +20,7 @@ import { EventSection } from "@/components/adventure/EventSection";
 import { BossSection } from "@/components/adventure/BossSection";
 import { AdventureHistorySection } from "@/components/adventure/AdventureHistorySection";
 import { AdventureSummaryBar } from "@/components/adventure/AdventureSummaryBar";
+import { AdventureCalendarSection } from "@/components/adventure/AdventureCalendarSection";
 import {
   AdventureCategoryTabs,
   type AdventureCategory,
@@ -32,15 +33,20 @@ export default async function AdventurePage() {
   }
   const userId = session.user.id;
 
-  const [todaysQuest, history, missions] = await Promise.all([
+  const [todaysQuest, history28, missions] = await Promise.all([
     getOrCreateTodaysQuest(userId),
-    getRecentQuestHistory(userId),
+    getRecentQuestHistory(userId, 28),
     getMissionsView(userId),
   ]);
   const { eventTheme } = getSeasonalDefaults(new Date());
-  const pastQuests = history.filter((q) => q.id !== todaysQuest.id);
+  const pastQuests = history28.filter((q) => q.id !== todaysQuest.id).slice(0, 7);
   const bosses = missions?.filter((m) => m.period === "boss") ?? [];
   const dailyMissions = missions?.filter((m) => m.period === "daily") ?? [];
+  // イベント限定ミッション: 今月のクエスト達成数
+  const monthKey = new Date().toISOString().slice(0, 7);
+  const monthlyCompleted = history28.filter(
+    (q) => q.status === "completed" && q.completedAt && new Date(q.completedAt).toISOString().slice(0, 7) === monthKey
+  ).length;
 
   const categories: AdventureCategory[] = [
     {
@@ -103,7 +109,7 @@ export default async function AdventurePage() {
           イベント
         </>
       ),
-      content: <EventSection eventTheme={eventTheme} />,
+      content: <EventSection eventTheme={eventTheme} monthlyCompleted={monthlyCompleted} />,
     },
   ];
 
@@ -139,6 +145,8 @@ export default async function AdventurePage() {
         </div>
         <BossSection bosses={bosses} />
       </div>
+
+      <AdventureCalendarSection quests={history28} />
 
       <AdventureHistorySection quests={pastQuests} />
     </main>

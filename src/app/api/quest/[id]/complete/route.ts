@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { completeQuest } from "@/lib/game/quest";
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
@@ -12,9 +12,12 @@ export async function POST(
   }
 
   const { id } = await params;
+  // 挑戦モード(easy/normal/hard)。ボディ無し・不正値はnormal扱い。
+  const body = (await request.json().catch(() => ({}))) as { mode?: string };
+  const mode = ["easy", "normal", "hard"].includes(body.mode ?? "") ? body.mode! : "normal";
 
   try {
-    const result = await completeQuest(session.user.id, id);
+    const result = await completeQuest(session.user.id, id, mode);
     return NextResponse.json(result);
   } catch (err) {
     const statusCode =

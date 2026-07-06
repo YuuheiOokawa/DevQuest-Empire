@@ -72,9 +72,18 @@ export type CompleteQuestResult = {
   unlockedTitles: string[];
 };
 
+// 挑戦モード: 完了時に自己申告で難易度を選び、EXP倍率を変える。
+// hardは「制限時間半分」など自分に課した縛りの分だけ報酬が増える。
+export const QUEST_MODE_MULTIPLIER: Record<string, number> = {
+  easy: 0.8,
+  normal: 1.0,
+  hard: 1.5,
+};
+
 export async function completeQuest(
   userId: string,
-  questId: string
+  questId: string,
+  mode: string = "normal"
 ): Promise<CompleteQuestResult> {
   const player = await prisma.player.findUniqueOrThrow({ where: { userId } });
   const quest = await prisma.quest.findUnique({ where: { id: questId } });
@@ -89,6 +98,9 @@ export async function completeQuest(
     throw Object.assign(new Error("already_completed"), { statusCode: 409 });
   }
 
+  const multiplier = QUEST_MODE_MULTIPLIER[mode] ?? 1.0;
+  const expGained = Math.max(1, Math.round(quest.expReward * multiplier));
+
   await prisma.quest.update({
     where: { id: questId },
     data: { status: "completed", completedAt: new Date() },
@@ -96,7 +108,7 @@ export async function completeQuest(
 
   const updatedPlayer = await prisma.player.update({
     where: { id: player.id },
-    data: { exp: { increment: quest.expReward } },
+    data: { exp: { increment: expGained } },
     include: { village: true },
   });
 
@@ -118,7 +130,7 @@ export async function completeQuest(
 
   return {
     newLevel: level,
-    expGained: quest.expReward,
+    expGained,
     unlockedBuildings,
     leveledUpBuildings,
     tierUpTo,
