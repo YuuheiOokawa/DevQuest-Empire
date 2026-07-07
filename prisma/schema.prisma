@@ -1,332 +1,285 @@
-// DevQuest Empire - Prisma Schema
-// 設計根拠: 19_Phase4_Implementation_Plan.md
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
-// --- NextAuth (Auth.js) 標準モデル ---
+enum ArticleType {
+  free
+  paid
+}
+
+enum ArticleStatus {
+  idea
+  draft
+  review
+  approved
+  copied
+  posted
+  archived
+}
+
+enum ApprovalStatus {
+  pending
+  approved
+  rejected
+}
+
+// シリーズ内での記事の役割（無料=読者獲得 / 有料=ノウハウ / まとめ=導線 / 宣伝=有料noteへの誘導）
+enum SeriesRole {
+  free
+  paid
+  summary
+  promo
+}
+
+enum CheckStatus {
+  not_checked
+  passed
+  issues_found
+}
+
+enum ClaimStatus {
+  unverified
+  verified
+  removed
+}
+
+// 投稿準備状態。未確認情報が残っている限り ready にはならない（重要ルール）
+enum ReadinessStatus {
+  not_ready
+  needs_review
+  ready
+}
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  githubLogin   String?   @unique
+  id        String   @id @default(uuid())
+  name      String   @default("me")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  accounts     Account[]
-  sessions     Session[]
-  player       Player?
-  repositories GithubRepository[]
+  articles    NoteArticle[]
+  ideas       ArticleIdea[]
+  aiLogs      AiGenerationLog[]
+  setting     Setting?
+  themeGroups ThemeGroup[]
+
+  @@map("users")
 }
 
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
-}
-
-// --- ドメインモデル ---
-
-model Player {
-  id             String    @id @default(cuid())
-  userId         String    @unique
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name           String
-  exp            Int       @default(0)
-  level          Int       @default(1)
-  currentStreak  Int       @default(0)
-  longestStreak  Int       @default(0)
-  lastActiveDate DateTime? @db.Date
-  lastLoginBonusAt DateTime? @db.Date
-  loginBonusStreak Int       @default(0)
-  equippedTitleId  String?
-  equippedTitle    TitleMaster? @relation("EquippedTitle", fields: [equippedTitleId], references: [id])
-  // 検証用の一時フィールド。tierの見た目を確認するための管理者用オーバーライド。
-  // 確認作業が終わり次第削除予定(src/lib/game/debugAdmin.ts参照)。
-  debugTierOverride Int?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  village          Village?
-  quests           Quest[]
-  achievements     PlayerAchievement[]
-  activityComments GithubActivityComment[]
-  titles           PlayerTitle[]
-  missionProgress  PlayerMissionProgress[]
-  studyLogs        StudyLog[]
-  qualifications   PlayerQualification[]
-}
-
-model TitleMaster {
-  id              String @id @default(cuid())
-  type            String @unique
-  name            String
-  condition       String
-  unlockCondition Json
-  rarity          String @default("bronze") // "bronze" | "silver" | "gold" | "platinum"(表示用)
-
-  playerTitles PlayerTitle[]
-  equippedBy   Player[] @relation("EquippedTitle")
-}
-
-model PlayerTitle {
-  id            String      @id @default(cuid())
-  playerId      String
-  player        Player      @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  titleMasterId String
-  titleMaster   TitleMaster @relation(fields: [titleMasterId], references: [id])
-  unlockedAt    DateTime    @default(now())
-
-  @@unique([playerId, titleMasterId])
-}
-
-model GithubRepository {
-  id             String    @id @default(cuid())
-  userId         String
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fullName       String
-  isPrivate      Boolean   @default(false)
-  syncEnabled    Boolean   @default(false)
-  privateConsent Boolean   @default(false)
-  lastSyncedAt   DateTime?
-  createdAt      DateTime  @default(now())
-
-  commits      GithubCommit[]
-  issues       GithubIssue[]
-  pullRequests GithubPullRequest[]
-
-  @@unique([userId, fullName])
-}
-
-model GithubCommit {
-  id           String   @id @default(cuid())
-  repositoryId String
-  repository   GithubRepository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
-  sha          String
-  message      String
-  committedAt  DateTime
-  expAwarded   Int
-  createdAt    DateTime @default(now())
-
-  @@unique([repositoryId, sha])
-}
-
-model GithubIssue {
-  id           String    @id @default(cuid())
-  repositoryId String
-  repository   GithubRepository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
-  issueNumber  Int
-  state        String
-  closedAt     DateTime?
-  expAwarded   Int
-  createdAt    DateTime  @default(now())
-
-  @@unique([repositoryId, issueNumber])
-}
-
-model GithubPullRequest {
-  id           String    @id @default(cuid())
-  repositoryId String
-  repository   GithubRepository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
-  prNumber     Int
-  state        String
-  mergedAt     DateTime?
-  expAwarded   Int
-  createdAt    DateTime  @default(now())
-
-  @@unique([repositoryId, prNumber])
-}
-
-model Village {
-  id       String @id @default(cuid())
-  playerId String @unique
-  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  name     String @default("My Village")
-
-  buildings VillageBuilding[]
-}
-
-model BuildingMaster {
-  id          String @id @default(cuid())
-  type        String @unique
+// テーマ別の記事シリーズ（1テーマ＝10本前後）
+model ThemeGroup {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
   name        String
-  description String
-  metric      String // 建物の成長に使う指標(ActivityMetricsのキー)
-  thresholds  Json // レベルごとの閾値の配列。例: [1,5,15,30,50] で最大Lv5
-  flavorTexts Json? // レベルごとのフレーバーテキスト配列(thresholdsと同じ長さ)。nullの場合はdescriptionを使う
-  requiredTier Int   @default(1) // この建物が出現する村の発展段階(1〜6)
-  sortOrder   Int    @default(0)
+  description String   @default("")
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  buildings VillageBuilding[]
+  user     User          @relation(fields: [userId], references: [id])
+  items    SeriesItem[]
+  articles NoteArticle[]
+
+  @@map("theme_groups")
 }
 
-model FallbackQuest {
-  id          String @id @default(cuid())
-  title       String
-  description String
-  difficulty  String
+// シリーズ計画の1項目。記事生成前は articleId が null
+model SeriesItem {
+  id             String     @id @default(uuid())
+  themeGroupId   String     @map("theme_group_id")
+  seriesNumber   Int        @map("series_number")
+  title          String
+  description    String     @default("")
+  role           SeriesRole @default(free)
+  suggestedPrice Int?       @map("suggested_price")
+  articleId      String?    @unique @map("article_id")
+  createdAt      DateTime   @default(now()) @map("created_at")
+
+  themeGroup ThemeGroup   @relation(fields: [themeGroupId], references: [id], onDelete: Cascade)
+  article    NoteArticle? @relation(fields: [articleId], references: [id])
+
+  @@map("series_items")
 }
 
-model VillageBuilding {
-  id               String   @id @default(cuid())
-  villageId        String
-  village          Village  @relation(fields: [villageId], references: [id], onDelete: Cascade)
-  buildingMasterId String
-  buildingMaster   BuildingMaster @relation(fields: [buildingMasterId], references: [id])
-  level            Int      @default(1)
-  unlockedAt       DateTime @default(now())
+model NoteArticle {
+  id            String        @id @default(uuid())
+  userId        String        @map("user_id")
+  ideaId        String?       @map("idea_id")
+  title         String
+  articleType   ArticleType   @map("article_type")
+  status        ArticleStatus @default(draft)
+  lead          String        @default("")
+  summary       String        @default("")
+  cta           String        @default("")
+  hashtags      String        @default("")
+  thumbnailText String        @default("") @map("thumbnail_text")
 
-  @@unique([villageId, buildingMasterId])
+  // 販売設定（有料記事）
+  price         Int?
+  salesTitle    String? @map("sales_title")
+  freeScopeNote String? @map("free_scope_note")
+  paidValueNote String? @map("paid_value_note")
+  targetReader  String? @map("target_reader")
+  promoText     String? @map("promo_text")
+
+  // シリーズ管理
+  themeGroupId String?     @map("theme_group_id")
+  seriesNumber Int?        @map("series_number")
+  seriesRole   SeriesRole? @map("series_role")
+  isPaid       Boolean     @default(false) @map("is_paid")
+
+  // 投稿スケジュール管理（1時間3投稿まで。実投稿はユーザー承認後・手動）
+  scheduledAt        DateTime? @map("scheduled_at")
+  postFrequencyGroup String?   @map("post_frequency_group") // 例: "2026-07-07T10"（時間バケツ）
+
+  // 品質チェック・ファクトチェック
+  qualityScore           Int?            @map("quality_score")
+  typoCheckStatus        CheckStatus     @default(not_checked) @map("typo_check_status")
+  factCheckStatus        CheckStatus     @default(not_checked) @map("fact_check_status")
+  hasUnverifiedClaims    Boolean         @default(false) @map("has_unverified_claims")
+  reviewNotes            String          @default("") @map("review_notes")
+  publishReadinessStatus ReadinessStatus @default(not_ready) @map("publish_readiness_status")
+
+  // 将来のnote投稿連携用（予約フィールド）
+  noteUrl    String?   @map("note_url")
+  notePostId String?   @map("note_post_id")
+  postedAt   DateTime? @map("posted_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user             User              @relation(fields: [userId], references: [id])
+  idea             ArticleIdea?      @relation(fields: [ideaId], references: [id])
+  themeGroup       ThemeGroup?       @relation(fields: [themeGroupId], references: [id])
+  seriesItem       SeriesItem?
+  sections         ArticleSection[]
+  approvalRequests ApprovalRequest[]
+  revenueLogs      RevenueLog[]
+  factClaims       FactClaim[]
+  qualityChecks    QualityCheck[]
+
+  @@map("note_articles")
 }
 
-model Quest {
-  id          String    @id @default(cuid())
-  playerId    String
-  player      Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  questDate   DateTime  @db.Date
-  title       String
-  description String
-  difficulty  String
-  expReward   Int
-  status      String    @default("pending")
-  completedAt DateTime?
-  createdAt   DateTime  @default(now())
+// 要確認情報（ファクトチェック対象）。数値・法律・制度・試験・料金など
+model FactClaim {
+  id        String      @id @default(uuid())
+  articleId String      @map("article_id")
+  text      String
+  category  String      @default("")
+  reason    String      @default("")
+  status    ClaimStatus @default(unverified)
+  note      String      @default("")
+  createdAt DateTime    @default(now()) @map("created_at")
 
-  @@unique([playerId, questDate])
+  article NoteArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@map("fact_claims")
 }
 
-model AchievementMaster {
-  id              String @id @default(cuid())
-  type            String @unique
-  name            String
-  condition       String
-  unlockCondition Json? // null の場合はコード側の特殊イベント判定(例: first_sync)を使う
-  rarity          String @default("bronze") // "bronze" | "silver" | "gold" | "platinum"(表示用)
+// 品質チェックの実行履歴（結果はJSONで保持）
+model QualityCheck {
+  id         String   @id @default(uuid())
+  articleId  String   @map("article_id")
+  score      Int
+  resultJson String   @map("result_json")
+  createdAt  DateTime @default(now()) @map("created_at")
 
-  playerAchievements PlayerAchievement[]
+  article NoteArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@map("quality_checks")
 }
 
-model PlayerAchievement {
-  id                  String   @id @default(cuid())
-  playerId            String
-  player              Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  achievementMasterId String
-  achievementMaster   AchievementMaster @relation(fields: [achievementMasterId], references: [id])
-  unlockedAt          DateTime @default(now())
+model ArticleIdea {
+  id            String      @id @default(uuid())
+  userId        String      @map("user_id")
+  title         String
+  description   String      @default("")
+  category      String      @default("")
+  suggestedType ArticleType @default(free) @map("suggested_type")
+  used          Boolean     @default(false)
+  createdAt     DateTime    @default(now()) @map("created_at")
 
-  @@unique([playerId, achievementMasterId])
+  user     User          @relation(fields: [userId], references: [id])
+  articles NoteArticle[]
+
+  @@map("article_ideas")
 }
 
-model MissionMaster {
-  id          String @id @default(cuid())
-  type        String @unique
-  name        String
-  description String
-  period      String // "daily" | "weekly"
-  metric      String // "commitCount" | "issueCloseCount" | "prOpenCount" | "prMergeCount"
-  targetValue Int
-  expReward   Int
+model ArticleSection {
+  id         String   @id @default(uuid())
+  articleId  String   @map("article_id")
+  orderIndex Int      @map("order_index")
+  heading    String
+  content    String
+  isPaid     Boolean  @default(false) @map("is_paid")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
-  progress PlayerMissionProgress[]
+  article NoteArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@map("article_sections")
 }
 
-model PlayerMissionProgress {
-  id              String    @id @default(cuid())
-  playerId        String
-  player          Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  missionMasterId String
-  missionMaster   MissionMaster @relation(fields: [missionMasterId], references: [id])
-  periodKey       String
-  claimedAt       DateTime?
+model ApprovalRequest {
+  id          String         @id @default(uuid())
+  articleId   String         @map("article_id")
+  status      ApprovalStatus @default(pending)
+  comment     String?
+  requestedAt DateTime       @default(now()) @map("requested_at")
+  resolvedAt  DateTime?      @map("resolved_at")
 
-  @@unique([playerId, missionMasterId, periodKey])
+  article NoteArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@map("approval_requests")
 }
 
-model StudyLog {
-  id          String   @id @default(cuid())
-  playerId    String
-  player      Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  category    String
-  title       String
-  minutes     Int
-  note        String?
-  expAwarded  Int
-  recordedAt  DateTime
-  createdAt   DateTime @default(now())
+model RevenueLog {
+  id        String   @id @default(uuid())
+  articleId String   @map("article_id")
+  date      DateTime
+  count     Int      @default(1)
+  amount    Int
+  memo      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  article NoteArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@map("revenue_logs")
 }
 
-model QualificationMaster {
-  id               String @id @default(cuid())
-  type             String @unique
-  name             String
-  category         String
-  difficulty       String @default("normal") // "easy" | "normal" | "hard" | "expert"
-  recommendedOrder Int    @default(0) // カテゴリ内でのおすすめ学習順(小さいほど先)
-  expReward        Int    @default(500) // 合格時に獲得するEXP(難易度に応じて変動)
+model AiGenerationLog {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  articleId String?  @map("article_id")
+  kind      String
+  provider  String
+  model     String
+  prompt    String
+  response  String
+  createdAt DateTime @default(now()) @map("created_at")
 
-  playerQualifications PlayerQualification[]
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("ai_generation_logs")
 }
 
-model PlayerQualification {
-  id                    String    @id @default(cuid())
-  playerId              String
-  player                Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  qualificationMasterId String
-  qualificationMaster   QualificationMaster @relation(fields: [qualificationMasterId], references: [id])
-  status                String    @default("planning") // "learning" | "planning" | "passed" | "failed" | "on_hold"
-  examDate              DateTime? @db.Date
-  passedDate            DateTime? @db.Date
-  memo                  String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+model Setting {
+  id         String   @id @default(uuid())
+  userId     String   @unique @map("user_id")
+  profile    String   @default("")
+  genres     String   @default("")
+  tone       String   @default("")
+  aiProvider String   @default("mock") @map("ai_provider")
+  aiModel    String   @default("claude-opus-4-8") @map("ai_model")
+  // 自分のnoteアカウントの公開プロフィールURL（ログイン情報は保存しない）
+  noteAccountUrl String @default("") @map("note_account_url")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
-  @@unique([playerId, qualificationMasterId])
-}
+  user User @relation(fields: [userId], references: [id])
 
-model GithubActivityComment {
-  id          String   @id @default(cuid())
-  playerId    String
-  player      Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  commentDate DateTime @db.Date
-  comment     String
-  createdAt   DateTime @default(now())
-
-  @@unique([playerId, commentDate])
+  @@map("settings")
 }

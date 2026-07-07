@@ -1,36 +1,107 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Note Auto Creator
 
-## Getting Started
+note記事の作成・販売を支援するスマホファーストのPWAアプリ。AIが記事の下書き・テーマ提案・販売設計を自動生成し、**あなたが確認・承認したものだけ**をコピー＆ペーストでnoteに投稿できます。
 
-First, run the development server:
+## 大切な方針
+
+- ❌ AIが勝手に投稿・販売開始することはありません
+- ✅ 投稿・有料設定・価格設定は必ずユーザー承認制（ステータス遷移ガードで強制）
+- ❌ noteの利用規約に反する自動操作（自動ログイン・自動投稿・スクレイピング）は行いません
+- 📋 MVPはnote API連携なし。記事本文を**コピー用プレビュー**から貼り付けて投稿します
+- 🔌 将来の投稿連携に備え、`note_url` / `note_post_id` などの予約フィールドを用意済み
+
+## ボタンだけ運用フロー
+
+1. **シリーズ** → テーマ入力 → AI企画 → 保存
+2. シリーズ詳細 → **⚡一括生成**（全記事を生成＋品質チェックまで自動）
+3. ホームの **「次にやること」** に従って ✅承認（1タップ）
+4. 投稿キュー → **⚡自動割当**（翌日以降のJST 9〜21時に1時間1件で分散）
+5. `npm run poster` を起動しておくと、予定時刻に**無料記事は自動で公開**、有料記事は下書きまで自動投入（価格設定・公開のみ手動）。詳細と注意点は `docs/10_自動投稿ランナー.md`
+
+## 機能
+
+| 機能 | 説明 |
+|---|---|
+| 自動品質チェック | 記事生成後に品質チェックまで自動実行（生成ボタン1回で完了） |
+| シリーズ一括生成 | 未生成の記事をボタン1つで全件生成（進捗表示・途中再開可） |
+| スケジュール自動割当 | 承認済み記事に空き時間帯を自動で割当（1時間3件上限遵守） |
+| テーマ提案 | カテゴリ（売れやすい/無料向け/有料向け/経験/IT・転職系）を指定してAIが提案 |
+| 記事自動生成 | タイトル・導入文・本文（セクション）・まとめ・CTA・ハッシュタグ・サムネ文言を一括生成 |
+| 無料/有料切り分け | セクション単位の有料フラグで境界を管理。プレビューで「ここから有料」を明示 |
+| 承認ワークフロー | idea → draft → review → **approved** → copied → **posted** → archived |
+| 有料記事販売支援 | 価格・販売タイトル・無料公開範囲・価値訴求・ターゲット・宣伝文をAIが提案 |
+| コピー用プレビュー | タイトル/無料部分/有料部分/ハッシュタグ/宣伝文を個別コピー。コピー時に自動でcopiedへ |
+| テーマ別シリーズ | 1テーマ10本前後の連載をAIが企画（無料6〜7/有料2〜3/まとめ1/宣伝1の配分） |
+| 投稿スケジュール | 投稿予定日時・投稿キュー・1時間最大3投稿の枠管理（実投稿は常に手動） |
+| 品質チェック | 誤字脱字・誇大表現・重複・タイトル一致・無料有料切り分け・読者価値をチェック |
+| ファクトチェック | 数値・法律・制度・試験・料金の記述に要確認フラグ。未確認が残る記事は承認不可 |
+| 売上メモ | 記事ごとの売上を手動記録・集計 |
+| PWA | スマホのホーム画面に追加して利用可能 |
+
+## 技術スタック
+
+Next.js 14 (App Router) / TypeScript / Tailwind CSS / Prisma / PostgreSQL (Neon) / Claude API（任意）
+
+## セットアップ
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env
+# .env の DATABASE_URL に Neon の接続文字列を設定
+# (Neonダッシュボード > Connect > Connection string)
+
+npx prisma db push   # スキーマをDBに反映
+npm run dev          # http://localhost:3210 （ポート3210を使用）
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+> 💡 `prisma db push` がネットワーク制限（5432ポート遮断・TLS傍受）で実行できない場合は、`npm run db:init`（Neonサーバーレスドライバ/443ポート経由）を実行するか、**`prisma/init.sql` を Neon の SQL Editor に貼り付けて実行**してください。
+>
+> 💡 DB接続はNeonサーバーレスドライバ（WebSocket/443）を使用しているため、プロキシ環境でも動作します。プロキシがTLSを傍受する環境では、信頼済みCAをPEMで書き出して `NODE_EXTRA_CA_CERTS` に指定してください（`npm run dev` はプロジェクト直下の `ca-bundle.pem` を自動参照します）。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Vercelにデプロイする場合
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Vercelで本リポジトリをImport（Framework: Next.js が自動検出される）
+2. **Settings > Environment Variables に `DATABASE_URL`（Neonの接続文字列）を設定**してからDeploy
+3. スキーマ反映はローカルから一度 `npx prisma db push` を実行（.envにNeonのURLを設定した状態で）
 
-## Learn More
+### 環境変数
 
-To learn more about Next.js, take a look at the following resources:
+| 変数 | 必須 | 説明 |
+|---|---|---|
+| `DATABASE_URL` | ✅ | PostgreSQL接続文字列（Neon: Connect > Connection string。`-pooler`付きURLの場合は末尾に`&pgbouncer=true`を追加） |
+| `AI_PROVIDER` | - | `mock`（既定・APIキー不要）/ `anthropic` |
+| `ANTHROPIC_API_KEY` | - | `AI_PROVIDER=anthropic` の場合に必要 |
+| `ANTHROPIC_MODEL` | - | 既定: `claude-opus-4-8` |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**AIはデフォルトでモック動作**します。APIキーなしで全機能（生成はテンプレート）を試せます。
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 使い方の流れ
 
-## Deploy on Vercel
+1. **設定** でプロフィール（経験・得意分野）を登録 → AI提案の質が上がります
+2. **テーマ提案** でAIにネタを出してもらい、気に入ったテーマを保存
+3. **記事作成** でAIが記事を一括生成 → 下書き（draft）として保存
+4. **記事詳細** で内容を編集し「確認に出す」→ 確認待ち（review）
+5. **承認待ち一覧** で内容を最終確認して **承認**（approved）
+6. 有料記事は **有料記事設定** でAIの販売提案を確認・編集
+7. **コピー用プレビュー** から本文をコピーし、noteに貼り付けて投稿
+8. 投稿したら記事詳細で「投稿済みとして記録」、売上は **売上メモ** に記録
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## テスト
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm test   # ステータス遷移ガードのユニットテスト
+```
+
+## プロジェクト構成
+
+```
+docs/            要件定義〜MVP実装計画（01〜07）
+prisma/          Prismaスキーマ（8テーブル）
+src/app/         画面（10画面）+ APIルート
+src/components/  共通コンポーネント
+src/lib/         workflow（遷移ガード）/ ai（プロバイダ抽象化）/ prisma
+```
+
+## 将来拡張（設計済み・未実装）
+
+note投稿連携 / 画像・サムネイル生成 / SNS宣伝文自動生成 / 売上分析 / 記事改善提案 / 定期投稿スケジュール / SEO分析 / マルチユーザー・認証

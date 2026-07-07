@@ -1,37 +1,34 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import BottomNav from "@/components/BottomNav";
+import Toaster from "@/components/Toast";
 
 export const metadata: Metadata = {
-  title: "DevQuest Empire",
-  description: "GitHubの草を、育てる。",
+  title: "Note Auto Creator",
+  description: "note記事作成・販売支援アプリ",
+  manifest: "/manifest.json",
   appleWebApp: {
-    title: "DevQuest Empire",
+    capable: true,
     statusBarStyle: "default",
+    title: "NoteAC",
   },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: "#41c9b4",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="ja">
+      <body>
+        <div className="mx-auto min-h-screen max-w-lg pb-20">{children}</div>
+        <BottomNav />
+        <Toaster />
+      </body>
     </html>
   );
 }

@@ -1,22 +1,20 @@
-import { PrismaClient } from "@/generated/prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "@prisma/client";
+import { PrismaNeon } from "@prisma/adapter-neon";
+import { Pool, neonConfig } from "@neondatabase/serverless";
+import ws from "ws";
 
-// ローカル開発環境(社内ネットワーク)のTLS中間プロキシにより、Postgres接続時の
-// 証明書検証が失敗するため、ローカルに限りrejectUnauthorized: falseで回避する。
-// Vercel上(本番/プレビュー)には中間プロキシが無いため正規の検証を行う。
-// （Prismaのネイティブschema-engineバイナリはこの回避策が効かないため、
-//   Migrateは scripts/db-apply-migration.mjs 経由で適用している）
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.VERCEL ? true : { rejectUnauthorized: false },
-});
+// Neonサーバーレスドライバ経由で接続する（WebSocket/443ポート）。
+// 直接5432に繋ぐ方式と違い、プロキシ環境でもNODE_EXTRA_CA_CERTSで通せる。
+neonConfig.webSocketConstructor = ws;
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter });
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+function createClient() {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const adapter = new PrismaNeon(pool);
+  return new PrismaClient({ adapter });
 }
+
+export const prisma = globalForPrisma.prisma ?? createClient();
+
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
